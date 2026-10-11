@@ -23,7 +23,7 @@ task check    # gofmt, vet and tests in every module, the negative type-check bu
 task lint     # golangci-lint in every module; must report zero issues
 ```
 
-`task check` is the gate a change is held to. CI exists but is `workflow_dispatch` only, because this repository is private and GitHub Actions minutes are metered, so the local gate is the real one. `task check` runs the Postgres and MySQL proofs too, but they skip loudly when no server is configured; the next section is how to run them for real.
+`task check` is the gate a change is held to. CI runs `volt ci` on every push and pull request through the volt-generated `ci.yml`, which covers format, vet, lint and race tests but not the type-check, zero-dependency or documentation gates, so the local gate is the real one. `task check` runs the Postgres and MySQL proofs too, but they skip loudly when no server is configured; the next section is how to run them for real.
 
 ## Running the proof on all three engines
 
@@ -116,15 +116,20 @@ Coverage is always measured through `scripts/covmerge.py`, never by one `go test
 ## Releases
 
 ```sh
-task release:dryrun        # print the next patch, minor and major tags
-task release:patch         # tag the next patch; pushing is a separate step: git push origin --tags
+volt status                                  # every module and CLI: last tag, commits since, suggested next version
+volt release contrib/vet --bump patch        # tests, tag, publish, verify; `.` is the core module
+volt release contrib/vet/cmd/sqlb --snapshot # build a CLI's archives into dist/, publish nothing
+volt release --from-tag contrib/vet/v0.1.1   # republish an existing tag, idempotent; the release workflow's path
+volt gen install contrib/vet/cmd/sqlb        # regenerate install.sh and install.ps1 for the sqlb CLI
 ```
+
+Releases are cut with [volt](https://github.com/khanakia/voltkit/tree/main/apps/volt), one tag stream per module and CLI: `v0.1.1` for the core, `contrib/<name>/v0.1.1` for each contrib module, `sqlb/v0.1.1` and `sqlbvet/v0.1.0` for the two CLIs. Pushing a tag releases nothing; the release workflow is manual and runs `volt release --from-tag` on a tag that already exists. Never move or recreate a published tag: the Go checksum database has recorded it.
 
 ## Every task
 
 <!-- BEGIN GENERATED TASKS -->
 
-Generated from `Taskfile.yml` by `python3 scripts/gen-commands-doc.py`; `task docs:commands` fails when it is stale. 54 tasks.
+Generated from `Taskfile.yml` by `python3 scripts/gen-commands-doc.py`; `task docs:commands` fails when it is stale. 50 tasks.
 
 `MODULES` is `. contrib/driver-sqlite contrib/driver-pgx contrib/driver-mysql contrib/vet contrib/migrate contrib/debug contrib/structbind`; a task that says *for each MODULE* runs its step in each of those directories.
 
@@ -472,44 +477,6 @@ Runs in `{{.DIR}}`.
 python3 {{if eq .DIR "."}}scripts{{else}}../../scripts{{end}}/covmerge.py cover.out
 echo "--- {{.DIR}}"
 sh {{if eq .DIR "."}}scripts{{else}}../../scripts{{end}}/uncovered.sh cover.out
-```
-
-### `task release:dryrun`
-
-Print the next tags for each bump without tagging
-
-```sh
-echo "current: $(git describe --tags --abbrev=0 2>/dev/null || echo none)"
-echo "patch -> $(sh scripts/nextver.sh patch)"
-echo "minor -> $(sh scripts/nextver.sh minor)"
-echo "major -> $(sh scripts/nextver.sh major)"
-```
-
-### `task release:major`
-
-Tag the next major release (no push)
-
-```sh
-git tag "$(sh scripts/nextver.sh major)"
-echo "tagged $(git describe --tags --abbrev=0). Push with: git push origin --tags"
-```
-
-### `task release:minor`
-
-Tag the next minor release (no push)
-
-```sh
-git tag "$(sh scripts/nextver.sh minor)"
-echo "tagged $(git describe --tags --abbrev=0). Push with: git push origin --tags"
-```
-
-### `task release:patch`
-
-Tag the next patch release (no push)
-
-```sh
-git tag "$(sh scripts/nextver.sh patch)"
-echo "tagged $(git describe --tags --abbrev=0). Push with: git push origin --tags"
 ```
 
 ### `task reuse:check`

@@ -117,7 +117,6 @@ tasks:
       - 'echo "--- {{.DIR}}"'
       - sh {{if eq .DIR "."}}scripts{{else}}../../scripts{{end}}/uncovered.sh cover.out
 
-
   typecheck:
     desc: FAIL unless every deliberately wrong statement in examples/typecheck is rejected by the compiler, line by line
     cmds:
@@ -377,28 +376,3 @@ tasks:
     cmds:
       - go test ./examples/pgsurface/... -run Example -v
 
-  release:dryrun:
-    desc: Print the next tags for each bump without tagging
-    cmds:
-      - 'echo "current: $(git describe --tags --abbrev=0 2>/dev/null || echo none)"'
-      - 'echo "patch -> $(sh scripts/nextver.sh patch)"'
-      - 'echo "minor -> $(sh scripts/nextver.sh minor)"'
-      - 'echo "major -> $(sh scripts/nextver.sh major)"'
-
-  release:patch:
-    desc: Tag the next patch release (no push)
-    cmds:
-      - 'git tag "$(sh scripts/nextver.sh patch)"'
-      - 'echo "tagged $(git describe --tags --abbrev=0). Push with: git push origin --tags"'
-
-  release:minor:
-    desc: Tag the next minor release (no push)
-    cmds:
-      - 'git tag "$(sh scripts/nextver.sh minor)"'
-      - 'echo "tagged $(git describe --tags --abbrev=0). Push with: git push origin --tags"'
-
-  release:major:
-    desc: Tag the next major release (no push)
-    cmds:
-      - 'git tag "$(sh scripts/nextver.sh major)"'
-      - 'echo "tagged $(git describe --tags --abbrev=0). Push with: git push origin --tags"'
