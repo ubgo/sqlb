@@ -1,0 +1,8 @@
+ubgo/sqlb contrib/driver-sqlite
+Copyright 2026 ubgo
+
+This product includes software developed at ubgo (https://github.com/ubgo/sqlb).
+
+Licensed under the Apache License, Version 2.0. See the LICENSE file for terms.
+
+This module depends on modernc.org/sqlite, which carries its own license.

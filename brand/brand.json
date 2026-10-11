@@ -1,0 +1,38 @@
+{
+  "name": "sqlb",
+  "repo": "ubgo/sqlb",
+  "tagline": "Typed SQL for Go libraries that own tables and cannot carry an ORM",
+  "description": "Typed SQL builder for Go: compile-checked columns, joins and scan targets, zero dependencies, Postgres and ClickHouse packages, pgvector and ltree extension sub-packages, and a shared conformance suite that proves a driver executes what the builder renders.",
+  "homepage": "",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "khanakia",
+    "email": "khanakia@gmail.com",
+    "github": "khanakia"
+  },
+  "positioning": {
+    "category": "Go SQL query builder",
+    "audience": "Authors of Go libraries that ship their own database tables, and the applications that embed them",
+    "wedge": "A library that owns tables must let the application join into them without handing over a string and without forcing an ORM on it. sqlb makes the column a typed value, so the library exports it and the compiler checks the application's join.",
+    "alternatives": [
+      "ORMs and code generators",
+      "String-building query builders",
+      "Hand-written SQL with database/sql"
+    ],
+    "differentiators": [
+      "A column is an Expr[T]; comparing, joining or scanning it at the wrong type is a compile error",
+      "A query carries its own scan targets, so the column list and the destinations cannot drift",
+      "Zero third-party dependencies in the core, enforced by a gate rather than by intent",
+      "Only SQL that Postgres, MySQL 8, SQLite and ClickHouse all share lives in the core; engine constructs fail at Build with the construct named",
+      "Postgres extensions are sub-packages built on exported guarded constructors, so adding one never edits the engine package",
+      "Type safety is verified by a build that must fail, not asserted in prose",
+      "A shared conformance suite proves a driver executes what the builder renders"
+    ]
+  },
+  "topics": [
+    "go", "golang", "sql", "sql-builder", "query-builder", "database",
+    "postgres", "postgresql", "sqlite", "clickhouse", "pgvector",
+    "type-safe", "generics", "database-sql", "zero-dependency",
+    "orm-alternative", "developer-tools", "open-source"
+  ]
+}

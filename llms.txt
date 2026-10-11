@@ -1,0 +1,37 @@
+# sqlb
+
+> Typed SQL builder for Go: compile-checked columns, joins and scan targets, zero dependencies, Postgres and ClickHouse packages, pgvector and ltree extension sub-packages, and a shared conformance suite that proves a driver executes what the builder renders.
+
+sqlb is an open-source Go library (github.com/ubgo/sqlb), licensed Apache-2.0. It is a query builder, not an ORM: no relation graph, no code generation, no derived DDL, no lazy loading. It exists for libraries that ship their own database tables and cannot make an application adopt an ORM.
+
+The core module imports nothing outside the Go standard library, and a gate fails the build if that changes. Anything needing a third-party package, a database driver above all, is a separate module under contrib/.
+
+## What it is for
+
+A library declares its tables as typed column values and exports them. An application joins those columns to its own, filters on them and scans into its own structs, and the compiler checks every column, join condition and scan target. Neither side needs the other's schema at compile time, and no SQL string crosses the boundary.
+
+## Docs
+- [docs/status.md](https://github.com/ubgo/sqlb/blob/main/docs/status.md): where the project stands. Which engines are real, what is executed against a real database versus checked as text, every measured number, and every known gap. Read first.
+- [README](https://github.com/ubgo/sqlb/blob/main/README.md): what it is, install, the shape of a query, the rule the core lives by
+- [docs/core-builder.md](https://github.com/ubgo/sqlb/blob/main/docs/core-builder.md): tables, typed columns, predicates, statements, how a query carries its scan targets
+- [docs/dialects.md](https://github.com/ubgo/sqlb/blob/main/docs/dialects.md): what a dialect decides, capability interfaces, how an engine construct fails closed
+- [docs/engines.md](https://github.com/ubgo/sqlb/blob/main/docs/engines.md): the pg, sqlite and ch packages, which engines are real, and the rule that decides what may live in the core
+- [docs/extensions.md](https://github.com/ubgo/sqlb/blob/main/docs/extensions.md): Postgres extension sub-packages, and how to add one without editing pg
+- [docs/execution.md](https://github.com/ubgo/sqlb/blob/main/docs/execution.md): DBTX, One, Each, and why nothing is passed for the destination
+- [docs/conformance.md](https://github.com/ubgo/sqlb/blob/main/docs/conformance.md): the shared suite in sqlbtest and what each case proves
+- [docs/contrib.md](https://github.com/ubgo/sqlb/blob/main/docs/contrib.md): how a contrib module is built and why a driver may not live in the core
+- [docs/examples.md](https://github.com/ubgo/sqlb/blob/main/docs/examples.md): the compile-checked catalogues
+- [CHANGELOG](https://github.com/ubgo/sqlb/blob/main/CHANGELOG.md): release history
+- [CONTRIBUTING](https://github.com/ubgo/sqlb/blob/main/CONTRIBUTING.md): the gate, and the rules a change is reviewed against
+- [COVERAGE](https://github.com/ubgo/sqlb/blob/main/COVERAGE.md): measured coverage per module and what coverage does not measure
+
+## Modules
+- `github.com/ubgo/sqlb` — the builder, the pg and ch engine packages, the Postgres extension sub-packages, and the sqlbtest conformance suite. No third-party dependencies.
+- `github.com/ubgo/sqlb/contrib/driver-sqlite` — SQLite through modernc.org/sqlite, pure Go with no cgo, opened with the pragmas a library-owned schema needs.
+
+## Install
+- `go get github.com/ubgo/sqlb`
+- `go get github.com/ubgo/sqlb/contrib/driver-sqlite`
+
+## Links
+- Repository: https://github.com/ubgo/sqlb

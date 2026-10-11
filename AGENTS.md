@@ -1,0 +1,51 @@
+# AGENTS.md
+
+Instructions for AI agents working in this repository. Humans should read [CONTRIBUTING.md](./CONTRIBUTING.md), which says the same things in the same order.
+
+## What this is
+
+A typed SQL layer for Go libraries that own database tables and cannot depend on an ORM. Read [docsi/STATUS.md](./docsi/STATUS.md) first: it says which engines are real, what has been executed against a database, and every known gap, so you do not spend a session re-deriving it. Then [docs/README.md](./docs/README.md) for the topic index.
+
+## Before you finish
+
+```sh
+task check
+```
+
+Every module formatted, vetted and tested, then the negative type-check build and the zero-dependency gate. If it is not green, the change is not done.
+
+## Rules that override your defaults
+
+**Never suppress a diagnostic to make a gate pass.** No `//nolint`, no deleted assertion, no skipped test, no loosened type. Fix the cause. A suppressed error is a defect, not a fix.
+
+**Zero third-party dependencies in the root module.** If a change needs one, it belongs in a contrib module. `task zerodep` enforces it.
+
+**Only universal SQL in the core.** A construct goes in the core only when Postgres, MySQL 8, SQLite and ClickHouse all accept it with the same syntax and meaning. When one differs, it goes in the engine package, even if the other three agree. Check all four before adding anything to `constants.go` or the core. MySQL is a reference engine only: this repository has no MySQL dialect and cannot render for it, so that quarter of the rule is checked by reading MySQL's documentation rather than by building a statement.
+
+**Every engine construct is guarded and tested.** Use the constructors `pg` exports, pass the construct name, and add the case to the package's guard test.
+
+**Never edit `pg` to add an extension.** Copy `pg/postgis`. The four steps are in [docs/extensions.md](./docs/extensions.md).
+
+**Every export gets its own doc comment**, saying why it exists and what stays true. A comment above a group documents only the first symbol.
+
+**Do not add scope nobody asked for.** No helper because the other engines have one, no dialect without a consumer, no abstraction for a second caller that does not exist.
+
+## Where things live
+
+| Path | What goes there |
+|---|---|
+| `/*.go` | the core, zero dependencies, universal SQL only |
+| `pg/`, `ch/` | one engine's constructs |
+| `pg/<ext>/` | one Postgres extension each |
+| `sqlbtest/` | the conformance suite; a new execution guarantee becomes a case here |
+| `contrib/<role>-<name>/` | a separate module, for anything needing a dependency |
+| `examples/` | catalogues whose SQL is checked by `go test` |
+| `docs/` | one document per topic |
+
+## Verification, not assertion
+
+A claim in a comment or a README is not verified; only the build and the tests verify it. A rendering claim needs an example with its expected SQL. An execution claim needs a conformance case. A type-safety claim needs a line in `examples/typecheck/bad.go` that must not compile.
+
+## CI
+
+The workflows are `workflow_dispatch` only, because this repository is private and Actions minutes are metered. Do not add a `push:` or `pull_request:` trigger. `task check` is the gate.

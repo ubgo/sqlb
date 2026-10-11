@@ -1,0 +1,35 @@
+# Normalize line endings — keep LF in the repo regardless of OS.
+* text=auto eol=lf
+
+# Byte-exact fixtures. The repository has none today; the rule stands so that
+# the first one added is safe by default. A fixture exists to be compared with
+# something, and normalizing its line endings would rewrite the thing under
+# test, so testdata is stored and checked out unchanged.
+**/testdata/** -text
+
+# Go source is always LF; say so explicitly rather than relying on text=auto.
+*.go text eol=lf
+*.mod text eol=lf
+*.sum text eol=lf
+*.work text eol=lf
+
+# Shell and Python scripts must keep LF or they will not execute after a
+# Windows checkout.
+*.sh text eol=lf
+*.py text eol=lf
+
+# Binary assets (don't diff or normalize).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+
+# Generated / vendored — collapse in diffs and exclude from language stats.
+vendor/** linguist-vendored
+dist/** linguist-generated=true
+
+# The catalogues under examples/ are documentation that happens to compile.
+# They are real, hand-written Go and should count toward language stats, so
+# they carry no linguist override; this comment exists so nobody adds one.

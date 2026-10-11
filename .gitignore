@@ -1,0 +1,46 @@
+# BEGIN repolink (managed — do not edit)
+/CLAUDE.md
+/docsi
+# END repolink
+
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+bin/
+
+# Test + coverage outputs
+*.test
+*.out
+cover.out
+cover.html
+coverage.out
+coverage.html
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go workspace local files. go.work itself IS committed: it is what lets the
+# contrib modules resolve the core before it is tagged, without a replace
+# directive in a published go.mod. Only the checksum file is local.
+go.work.sum
+
+# Build artifacts. The typecheck gate used to leave one here.
+dist/
+build/
+/examples/typecheck/typecheck
+
+# Python bytecode from scripts/
+__pycache__/
+
+# generated per run by contrib/vet TestVettool_RunsUnderGoVet
+contrib/vet/internal/probe/vettool_*/

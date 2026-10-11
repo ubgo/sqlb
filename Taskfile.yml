@@ -1,0 +1,404 @@
+version: '3'
+
+# Reusable command runner for the ubgo/sqlb repo. `task --list` shows them all.
+#
+# The repo holds several Go modules: the zero-dependency core at the root, and
+# one module per driver under contrib/. MODULES is the list every gate walks,
+# so adding a contrib module means adding one line here and one matrix entry
+# in .github/workflows/test.yml.
+
+vars:
+  MODULES: . contrib/driver-sqlite contrib/driver-pgx contrib/driver-mysql contrib/vet contrib/migrate contrib/debug contrib/structbind
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  check:
+    desc: The gate - every module formatted, vetted and tested, plus the core's own gates
+    cmds:
+      - task: check:modules
+      - task: typecheck
+      - task: zerodep
+      - task: reuse:check
+      - task: tasks:check
+      - task: docs:check
+
+  check:modules:
+    desc: fmt, vet and test in every module
+    cmds:
+      - for: { var: MODULES }
+        task: module:check
+        vars: { DIR: '{{.ITEM}}' }
+
+  module:check:
+    internal: true
+    dir: '{{.DIR}}'
+    cmds:
+      - echo "--- {{.DIR}}"
+      - test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - go vet ./...
+      - go test ./...
+
+  test:
+    desc: Run every test in every module
+    cmds:
+      - for: { var: MODULES }
+        task: module:test
+        vars: { DIR: '{{.ITEM}}' }
+
+  module:test:
+    internal: true
+    dir: '{{.DIR}}'
+    cmds:
+      - go test ./...
+
+  test:race:
+    desc: Run every test with the race detector
+    cmds:
+      - for: { var: MODULES }
+        task: module:race
+        vars: { DIR: '{{.ITEM}}' }
+
+  module:race:
+    internal: true
+    dir: '{{.DIR}}'
+    cmds:
+      - go test -race -count=2 ./...
+
+  cover:
+    desc: Print total coverage per module
+    cmds:
+      - for: { var: MODULES }
+        task: module:cover
+        vars: { DIR: '{{.ITEM}}' }
+
+  test:cover:
+    desc: Write a coverage profile per module and print each total
+    cmds:
+      - for: { var: MODULES }
+        task: module:cover
+        vars: { DIR: '{{.ITEM}}' }
+
+  test:cover:html:
+    desc: Open an HTML coverage report for the core module
+    cmds:
+      - go test -coverpkg=./... -coverprofile=cover.out -covermode=atomic ./...
+      - go tool cover -html=cover.out -o cover.html
+      - 'echo "wrote cover.html"'
+
+  test:uncovered:
+    desc: List every statement with zero coverage, per module, worst file first
+    cmds:
+      - for: { var: MODULES }
+        task: module:uncovered
+        vars: { DIR: '{{.ITEM}}' }
+
+  # Writes a profile, prints the module's total, and removes the profile. The
+  # -coverpkg flag is the whole point: most of the core is exercised from the
+  # catalogues under examples/, which are external test packages, so the
+  # default per-package measure credits none of that work to the core. See
+  # COVERAGE.md.
+  module:cover:
+    internal: true
+    dir: '{{.DIR}}'
+    cmds:
+      - python3 {{if eq .DIR "."}}scripts{{else}}../../scripts{{end}}/covmerge.py cover.out
+      - 'echo "{{.DIR}}: $(go tool cover -func=cover.out | tail -1 | awk ''{print $NF}'')"'
+      - rm -f cover.out
+
+  module:uncovered:
+    internal: true
+    dir: '{{.DIR}}'
+    cmds:
+      - python3 {{if eq .DIR "."}}scripts{{else}}../../scripts{{end}}/covmerge.py cover.out
+      - 'echo "--- {{.DIR}}"'
+      - sh {{if eq .DIR "."}}scripts{{else}}../../scripts{{end}}/uncovered.sh cover.out
+
+
+  typecheck:
+    desc: FAIL unless every deliberately wrong statement in examples/typecheck is rejected by the compiler, line by line
+    cmds:
+      - python3 scripts/check-typecheck.py
+
+  zerodep:
+    desc: FAIL if the core module gained a third-party dependency
+    cmds:
+      - |
+        if grep -E '^[[:space:]]+[^/[:space:]]+\.[^/[:space:]]+/' go.mod | grep -v 'github.com/ubgo'; then
+          echo "the sqlb core has a third-party dependency - it belongs in contrib/"; exit 1
+        fi
+        echo "zerodep: the core imports nothing outside the standard library"
+
+  docs:check:
+    desc: Verify the markdown - links resolve, anchors match, no rules, no hard wraps
+    cmds:
+      - python3 scripts/check-docs.py
+      - task: docs:setup
+      - task: docs:names
+      - task: docs:commands
+      - task: docs:not-built
+
+  docs:setup:
+    desc: FAIL if a per-package page's Setup block does not compile
+    cmds:
+      - python3 scripts/check-doc-setup.py
+
+  docs:names:
+    desc: FAIL if a documentation snippet names a symbol that does not exist
+    cmds:
+      - python3 scripts/check-doc-names.py
+      - task: docs:coverage
+
+  docs:coverage:
+    desc: Fail when a package's exports are not named in the documentation
+    cmds:
+      - python3 scripts/check-doc-coverage.py
+
+  reuse:check:
+    desc: FAIL if a function taking a statement is not covered by the reuse test
+    cmds:
+      - python3 scripts/check-reuse-coverage.py
+
+  tasks:check:
+    desc: FAIL if a package has fewer end-to-end task tests than its floor
+    cmds:
+      - python3 scripts/check-task-tests.py
+
+  detector:pg:
+    desc: Re-read Postgres's command list and ALTER TABLE grammar from a live server into pg/testdata (psql must reach it; PG_MAJOR names the files)
+    vars:
+      PG_MAJOR: '{{.PG_MAJOR | default "17"}}'
+    cmds:
+      - psql -X -c '\h' > pg/testdata/commands-{{.PG_MAJOR}}.txt
+      - psql -X -c '\h ALTER TABLE' > pg/testdata/alter-table-{{.PG_MAJOR}}.txt
+      - go test ./pg/ -run TestDetector -v
+
+  detector:sqlite:
+    desc: Re-fetch SQLite's grammar index into sqlite/testdata/lang-index.txt and run the detector
+    cmds:
+      - curl -sS --fail --max-time 30 https://sqlite.org/lang.html | python3 scripts/sqlite-lang-index.py > sqlite/testdata/lang-index.txt.new
+      - mv sqlite/testdata/lang-index.txt.new sqlite/testdata/lang-index.txt
+      - go test ./sqlite/ -run TestDetector -v
+
+  # The engine proofs. SQLite needs nothing; Postgres and MySQL need a server,
+  # and each driver module's tests skip loudly without one. These tasks make a
+  # throwaway server, point the tests at it and take it away again. The
+  # defaults below are what the scratch servers use; override any on the
+  # command line, e.g. task test:mysql MYSQL_DSN='user:pw@tcp(host:3306)/db'.
+
+  engines:mysql:up:
+    desc: Start a throwaway MySQL 8.4 container on 127.0.0.1:{{.MYSQL_PORT}} and wait until it accepts queries
+    vars:
+      MYSQL_PORT: '{{.MYSQL_PORT | default "33069"}}'
+      MYSQL_IMAGE: '{{.MYSQL_IMAGE | default "mysql:8.4"}}'
+    cmds:
+      - docker run -d --rm --name sqlb-mysql-scratch -e MYSQL_ROOT_PASSWORD=sqlb -e MYSQL_DATABASE=sqlb -p 127.0.0.1:{{.MYSQL_PORT}}:3306 {{.MYSQL_IMAGE}}
+      - task: engines:mysql:wait
+
+  engines:mysql:wait:
+    desc: Wait up to two minutes for the scratch MySQL to accept queries (its first start initialises the data directory)
+    cmds:
+      - |
+        for i in $(seq 1 60); do
+          if docker exec sqlb-mysql-scratch mysql -uroot -psqlb -e 'SELECT 1' sqlb >/dev/null 2>&1; then
+            echo "mysql ready"; exit 0
+          fi
+          sleep 2
+        done
+        echo "mysql did not become ready"; exit 1
+
+  engines:mysql:down:
+    desc: Stop the scratch MySQL container, which --rm then removes with its data
+    cmds:
+      - docker stop sqlb-mysql-scratch
+
+  engines:pg:up:
+    desc: Create the scratch Postgres database {{.PG_DB}} on the local server psql reaches
+    vars:
+      PG_DB: '{{.PG_DB | default "sqlb_scratch"}}'
+    cmds:
+      - createdb {{.PG_DB}}
+
+  engines:pg:down:
+    desc: Drop the scratch Postgres database {{.PG_DB}}
+    vars:
+      PG_DB: '{{.PG_DB | default "sqlb_scratch"}}'
+    cmds:
+      - dropdb --if-exists {{.PG_DB}}
+
+  engines:pg18:up:
+    desc: Start a throwaway Postgres 18 container on 127.0.0.1:{{.PG18_PORT}} and wait until it accepts queries, for the constructs that need 18
+    vars:
+      PG18_PORT: '{{.PG18_PORT | default "54318"}}'
+      PG18_IMAGE: '{{.PG18_IMAGE | default "postgres:18"}}'
+    cmds:
+      - docker run -d --rm --name sqlb-pg18-scratch -e POSTGRES_PASSWORD=sqlb -p 127.0.0.1:{{.PG18_PORT}}:5432 {{.PG18_IMAGE}}
+      - |
+        for i in $(seq 1 60); do
+          if docker exec sqlb-pg18-scratch pg_isready -U postgres >/dev/null 2>&1; then exit 0; fi
+          sleep 2
+        done
+        echo "sqlb-pg18-scratch did not accept queries within two minutes" >&2
+        exit 1
+
+  engines:pg18:down:
+    desc: Stop the scratch Postgres 18 container
+    cmds:
+      - docker rm -f sqlb-pg18-scratch >/dev/null 2>&1 || true
+
+  test:pg18:
+    desc: Run the Postgres proof against the scratch Postgres 18 container, which is what covers the constructs 17 refuses - virtual generated columns, NOT ENFORCED constraints, the wider ALTER CONSTRAINT and temporal keys
+    vars:
+      PG18_DSN: '{{.PG18_DSN | default "postgres://postgres:sqlb@127.0.0.1:54318/postgres?sslmode=disable"}}'
+    env:
+      SQLB_PG_DSN: '{{.PG18_DSN}}'
+    cmds:
+      - go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/...
+
+  test:sqlite:
+    desc: Run the SQLite proof - the conformance suite and every sqlite construct and DDL statement - with the race detector
+    dir: contrib/driver-sqlite
+    cmds:
+      - go test -race -count=1 ./...
+
+  test:pg:
+    desc: Run the Postgres proof against PG_DSN (default the scratch database) with the race detector - driver-pgx, vet's catalogue and drift checks, and the migration ledger
+    vars:
+      PG_DSN: '{{.PG_DSN | default "postgres:///sqlb_scratch?sslmode=disable"}}'
+    env:
+      SQLB_PG_DSN: '{{.PG_DSN}}'
+    cmds:
+      - go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/...
+
+  test:mysql:
+    desc: Run the MySQL proof against MYSQL_DSN (default the scratch container) with the race detector - driver-mysql, vet's catalogue and drift checks, and the migration ledger
+    vars:
+      MYSQL_DSN: '{{.MYSQL_DSN | default "root:sqlb@tcp(127.0.0.1:33069)/sqlb"}}'
+    env:
+      SQLB_MYSQL_DSN: '{{.MYSQL_DSN}}'
+    cmds:
+      - go test -race -count=1 ./contrib/driver-mysql/... ./contrib/vet/... ./contrib/migrate/...
+
+  test:engines:
+    desc: Start every scratch server, run the SQLite, Postgres 17, Postgres 18 and MySQL proofs, and remove the servers even when a proof fails
+    cmds:
+      - task: engines:pg:up
+      - task: engines:pg18:up
+      - task: engines:mysql:up
+      - defer: { task: engines:mysql:down }
+      - defer: { task: engines:pg18:down }
+      - defer: { task: engines:pg:down }
+      - task: test:sqlite
+      - task: test:pg
+      - task: test:pg18
+      - task: test:mysql
+
+  detector:mysql:
+    desc: Re-read MySQL's DDL statement list from the scratch container into mysql/testdata and run the detector
+    cmds:
+      - |
+        {
+          echo "# MySQL $(docker exec sqlb-mysql-scratch mysql -uroot -psqlb -N -e 'SELECT version()' 2>/dev/null): HELP 'Data Definition', captured $(date +%Y-%m-%d) from the scratch container."
+          docker exec sqlb-mysql-scratch mysql -uroot -psqlb -N -e "HELP 'Data Definition'" 2>/dev/null | tail -n +2 | sed 's/^ *//'
+        } > mysql/testdata/ddl-8.4.txt
+      - go test ./mysql/ -run TestDetector -v
+
+  detector:
+    desc: Run every DDL detector against its checked-in list, without refetching
+    cmds:
+      - go test ./pg/ ./sqlite/ ./mysql/ -run TestDetector -v
+
+  docs:commands:
+    desc: FAIL if COMMANDS.md does not describe every task in this Taskfile exactly; regenerate with python3 scripts/gen-commands-doc.py
+    cmds:
+      - python3 scripts/gen-commands-doc.py --check
+
+  docs:commands:gen:
+    desc: Regenerate the task reference in COMMANDS.md from this Taskfile
+    cmds:
+      - python3 scripts/gen-commands-doc.py
+
+  docs:not-built:
+    desc: FAIL if docs/ddl/not-built.md lacks a section for a partial or left-out detector entry, or its appendix is stale
+    cmds:
+      - python3 scripts/gen-not-built.py --check
+
+  docs:not-built:gen:
+    desc: Regenerate the detector appendix in docs/ddl/not-built.md
+    cmds:
+      - python3 scripts/gen-not-built.py
+
+  docs:reference:
+    desc: Regenerate the reference table in each engine package's page
+    cmds:
+      - python3 scripts/regen-reference.py
+
+  lint:
+    desc: Run golangci-lint in every module
+    cmds:
+      - for: { var: MODULES }
+        task: module:lint
+        vars: { DIR: '{{.ITEM}}' }
+
+  module:lint:
+    internal: true
+    dir: '{{.DIR}}'
+    cmds:
+      - golangci-lint run ./...
+
+  fmt:
+    desc: Format every Go file
+    cmds:
+      - gofmt -w .
+
+  tidy:
+    desc: Tidy every module
+    cmds:
+      - for: { var: MODULES }
+        task: module:tidy
+        vars: { DIR: '{{.ITEM}}' }
+
+  module:tidy:
+    internal: true
+    dir: '{{.DIR}}'
+    cmds:
+      - go mod tidy
+
+  cookbook:
+    desc: Print the cookbook recipes with their rendered SQL
+    cmds:
+      - go test ./examples/cookbook -run Example -v
+
+  surface:
+    desc: Print the Postgres surface catalogue with its rendered SQL
+    cmds:
+      - go test ./examples/pgsurface/... -run Example -v
+
+  release:dryrun:
+    desc: Print the next tags for each bump without tagging
+    cmds:
+      - 'echo "current: $(git describe --tags --abbrev=0 2>/dev/null || echo none)"'
+      - 'echo "patch -> $(sh scripts/nextver.sh patch)"'
+      - 'echo "minor -> $(sh scripts/nextver.sh minor)"'
+      - 'echo "major -> $(sh scripts/nextver.sh major)"'
+
+  release:patch:
+    desc: Tag the next patch release (no push)
+    cmds:
+      - 'git tag "$(sh scripts/nextver.sh patch)"'
+      - 'echo "tagged $(git describe --tags --abbrev=0). Push with: git push origin --tags"'
+
+  release:minor:
+    desc: Tag the next minor release (no push)
+    cmds:
+      - 'git tag "$(sh scripts/nextver.sh minor)"'
+      - 'echo "tagged $(git describe --tags --abbrev=0). Push with: git push origin --tags"'
+
+  release:major:
+    desc: Tag the next major release (no push)
+    cmds:
+      - 'git tag "$(sh scripts/nextver.sh major)"'
+      - 'echo "tagged $(git describe --tags --abbrev=0). Push with: git push origin --tags"'

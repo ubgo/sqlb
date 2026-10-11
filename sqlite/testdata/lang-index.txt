@@ -1,0 +1,45 @@
+# The entries of SQLite's grammar index, https://sqlite.org/lang.html,
+# fetched 2026-09-21, one per line, verbatim. PRAGMA is appended from
+# https://sqlite.org/pragma.html because the index links it separately.
+# Regenerate with: task detector:sqlite
+SQL keywords
+aggregate functions
+ALTER TABLE
+ANALYZE
+ATTACH DATABASE
+BEGIN TRANSACTION
+comment
+COMMIT TRANSACTION
+core functions
+CREATE INDEX
+CREATE TABLE
+CREATE TRIGGER
+CREATE VIEW
+CREATE VIRTUAL TABLE
+date and time functions
+DELETE
+DETACH DATABASE
+DROP INDEX
+DROP TABLE
+DROP TRIGGER
+DROP VIEW
+END TRANSACTION
+EXPLAIN
+expression
+INDEXED BY
+INSERT
+keywords
+math functions
+ON CONFLICT clause
+REINDEX
+RELEASE SAVEPOINT
+REPLACE
+RETURNING clause
+ROLLBACK TRANSACTION
+SAVEPOINT
+SELECT
+UPDATE
+UPSERT
+VACUUM
+WITH clause
+PRAGMA

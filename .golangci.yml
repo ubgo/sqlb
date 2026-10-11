@@ -1,0 +1,33 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: standard
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - revive
+    - misspell
+    - unconvert
+    - gocritic
+  exclusions:
+    rules:
+      # The catalogues under examples/ are Example functions whose whole point
+      # is the // Output: block. They build statements and discard the value
+      # through a helper, which errcheck reads as an unchecked error.
+      - path: ^examples/
+        linters: [errcheck]
+      # bad.go is deliberately wrong code behind a build tag. It exists to
+      # fail the compiler, so no linter has anything useful to say about it.
+      - path: ^examples/typecheck/
+        linters: [errcheck, govet, staticcheck, unused, revive, gocritic]
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

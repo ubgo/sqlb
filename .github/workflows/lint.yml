@@ -1,0 +1,41 @@
+# Manual only, on purpose. See the note at the top of test.yml: this repository
+# is private and Actions minutes are metered.
+#
+# To restore automatic runs when there is budget, replace the `on:` block with:
+#
+#   on:
+#     push:
+#       branches: [main]
+#     pull_request:
+#     workflow_dispatch:
+
+name: lint
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  golangci:
+    name: golangci-lint (${{ matrix.module }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - .
+          - contrib/driver-sqlite
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.24"
+          cache: true
+          cache-dependency-path: ${{ matrix.module }}/go.sum
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.0
+          working-directory: ${{ matrix.module }}
+          args: --timeout=5m

@@ -1,0 +1,127 @@
+# Manual only, on purpose.
+#
+# This repository is private, where GitHub Actions minutes are metered, and a
+# workflow that goes red for billing rather than for code teaches everyone to
+# ignore the gate. `task check` is the real gate; this exists for the times a
+# clean-machine run is worth the minutes.
+#
+# To restore automatic runs when there is budget, replace the `on:` block with:
+#
+#   on:
+#     push:
+#       branches: [main]
+#     pull_request:
+#     workflow_dispatch:
+
+name: test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.module }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - .
+          - contrib/driver-sqlite
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.24"
+          cache: true
+          cache-dependency-path: ${{ matrix.module }}/go.sum
+      - name: gofmt
+        working-directory: ${{ matrix.module }}
+        run: test -z "$(gofmt -l .)"
+      - name: vet
+        working-directory: ${{ matrix.module }}
+        run: go vet ./...
+      - name: test
+        working-directory: ${{ matrix.module }}
+        run: go test -race -count=2 ./...
+      - name: coverage floor gate
+        working-directory: ${{ matrix.module }}
+        run: |
+          # covmerge.py rather than a single `go test ./...` run. -coverpkg is
+          # needed because most of the core is exercised by the catalogues under
+          # examples/, which are external test packages; but with -coverpkg a
+          # multi-package run keeps one copy of each block instead of summing
+          # the copies, and the surviving copy is usually from a binary that
+          # never executed it. That reads 24.5% for the core against a real
+          # 88.4%, so this gate would have failed its own floor. See COVERAGE.md.
+          python3 "${{ github.workspace }}/scripts/covmerge.py" cover.out
+          TOTAL=$(go tool cover -func=cover.out | tail -1 | grep -oE '[0-9.]+' | tail -1)
+          case "${{ matrix.module }}" in
+            .) FLOOR=80 ;;
+            contrib/driver-sqlite) FLOOR=90 ;;
+            *) FLOOR=0 ;;
+          esac
+          echo "coverage: $TOTAL% (floor: $FLOOR%)"
+          if awk "BEGIN{exit !($TOTAL < $FLOOR)}"; then
+            echo "coverage $TOTAL% is below floor $FLOOR%"
+            exit 1
+          fi
+
+  typecheck:
+    name: negative build (deliberately wrong code must not compile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.24"
+      - name: assert bad.go is rejected
+        run: |
+          if go build -o /dev/null -tags typecheck ./examples/typecheck/ 2>/dev/null; then
+            echo "bad.go compiled; a type-safety claim is false"
+            exit 1
+          fi
+          echo "ok: bad.go rejected, as required"
+
+  zero-dep-gate:
+    name: zero-dep gate (core)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: assert the core has no third-party deps
+        run: |
+          if grep -E '^[[:space:]]+[^/[:space:]]+\.[^/[:space:]]+/' go.mod | grep -v 'github.com/ubgo'; then
+            echo "the sqlb core has a third-party dependency - it belongs in contrib/"
+            exit 1
+          fi
+          echo "ok: zero non-stdlib deps in the core"
+
+  # The matrix is the core only, on purpose. `go mod tidy` inside a contrib
+  # module has to resolve the core at the version its go.mod pins, and that
+  # version must be a published tag. Until github.com/ubgo/sqlb is tagged and
+  # pushed, tidy there fails on an unknown revision rather than on anything
+  # about the module. Add contrib/driver-sqlite to this matrix with the first
+  # tag; the go.work replace covers local development in the meantime.
+  tidy-check:
+    name: go.mod is tidy
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module:
+          - .
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.24"
+      - name: assert go.mod is tidy
+        working-directory: ${{ matrix.module }}
+        run: |
+          go mod tidy
+          if [ -n "$(git status --porcelain go.mod go.sum 2>/dev/null)" ]; then
+            echo "go.mod/go.sum drifted - run 'go mod tidy'"
+            exit 1
+          fi

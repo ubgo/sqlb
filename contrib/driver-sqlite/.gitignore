@@ -1,0 +1,10 @@
+# Test + coverage outputs
+*.test
+*.out
+cover.out
+cover.html
+
+# SQLite files a test left behind
+*.db
+*.db-wal
+*.db-shm

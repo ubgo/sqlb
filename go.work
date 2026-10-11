@@ -1,0 +1,32 @@
+// The Go workspace for this repository.
+//
+// Why it is committed: contrib modules depend on the core, which is in the
+// same repository and is not always tagged at the version they require. The
+// alternative is a `replace` directive in each contrib go.mod, and that
+// breaks `go install` and `go get` for everyone outside this checkout,
+// because a replace in a dependency is ignored by consumers while the
+// unresolvable require line is not. The workspace keeps local development
+// working without putting anything in a published go.mod that a consumer
+// cannot resolve.
+//
+// Adding a module means adding it here and to MODULES in Taskfile.yml.
+
+go 1.25.0
+
+use (
+	.
+	./contrib/debug
+	./contrib/driver-mysql
+	./contrib/driver-pgx
+	./contrib/vet
+	./contrib/driver-sqlite
+	./contrib/migrate
+	./contrib/structbind
+)
+
+// The pin in contrib/driver-sqlite/go.mod names the version a consumer will
+// resolve from the proxy. Until that tag exists, resolving it here would hit
+// the network and fail, so the workspace maps it to this checkout. A replace
+// in go.work is local only: it is never published and a consumer never sees
+// it, which is the whole reason it lives here and not in go.mod.
+replace github.com/ubgo/sqlb v0.1.0 => .
