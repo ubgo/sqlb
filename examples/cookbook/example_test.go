@@ -27,7 +27,23 @@ func show(q sqlb.Query, err error) {
 		return
 	}
 	fmt.Println(q.SQL)
-	fmt.Println("args:", q.Args)
+	fmt.Println("args:", jsonArgsAsText(q.Args))
+}
+
+// jsonArgsAsText returns args with every json.RawMessage converted to a
+// string. fmt prints a RawMessage as its bytes on Go 1.24, the module's floor,
+// and as its text on Go 1.27, so printing args directly made the Output of
+// every recipe with a JSON argument depend on the toolchain. As a string it
+// prints the same on both.
+func jsonArgsAsText(args []any) []any {
+	out := make([]any, len(args))
+	for i, a := range args {
+		if raw, ok := a.(json.RawMessage); ok {
+			a = string(raw)
+		}
+		out[i] = a
+	}
+	return out
 }
 
 // ---------------------------------------------------------------------------

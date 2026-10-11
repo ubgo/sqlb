@@ -1,6 +1,7 @@
 package vet_test
 
 import (
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -28,7 +29,11 @@ import (
 // file appears once on purpose. Before the same day's fix the analyzer also
 // reported the pg.Dialect type in each, one mistake giving two findings.
 func TestRepo_ReportsOnlyTheDeliberatePins(t *testing.T) {
-	got, err := vet.Run("../..", "./...")
+	root, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := vet.Run(root, "./...")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -43,10 +48,15 @@ func TestRepo_ReportsOnlyTheDeliberatePins(t *testing.T) {
 	}
 	var have []string
 	for _, f := range got {
+		// The position is made relative to the repository root rather than
+		// cut after the first "/sqlb/": a checkout at .../work/sqlb/sqlb, as
+		// on a GitHub runner, left a "sqlb/" prefix on every file.
 		file, _, _ := strings.Cut(f.Pos, ":")
-		if i := strings.Index(file, "/sqlb/"); i >= 0 {
-			file = file[i+len("/sqlb/"):]
+		rel, err := filepath.Rel(root, file)
+		if err != nil {
+			t.Fatalf("finding outside the repository: %s", f.Pos)
 		}
+		file = filepath.ToSlash(rel)
 		have = append(have, file+" "+f.Analyzer)
 	}
 	sort.Strings(have)
