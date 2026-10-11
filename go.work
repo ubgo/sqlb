@@ -11,7 +11,7 @@
 //
 // Adding a module means adding it here and to MODULES in Taskfile.yml.
 
-go 1.25.0
+go 1.24.0
 
 use (
 	.
