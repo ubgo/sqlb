@@ -19,6 +19,8 @@ go get github.com/ubgo/sqlb/contrib/driver-mysql   # MySQL 8, through go-sql-dri
 
 Every module is tagged together: the core as `v0.1.0`, each contrib module as `contrib/<name>/v0.1.0`. Inside the repository a committed `go.work` resolves the modules against each other.
 
+The `sqlb` command-line checker, and the `sqlbvet` tool for `go vet -vettool`, install with `go install github.com/ubgo/sqlb/contrib/vet/cmd/sqlb@latest`, or as prebuilt binaries for macOS and Linux with `curl -fsSL https://raw.githubusercontent.com/ubgo/sqlb/main/install.sh | sh` (`install.ps1` on Windows); see [contrib/vet](contrib/vet/README.md).
+
 ## Why it exists
 
 A library that ships its own tables has a problem no ORM solves for it. It must let the application join across the boundary into tables it has never heard of, and it must do so without pulling a code generator or a second ORM into an application that may already have one. Passing SQL strings across that boundary gives the application no type safety and the library no control. `sqlb` is the smallest thing that gives both: the library exports typed column values, the application composes them, and the compiler checks the join. [`docs/cross-package.md`](./docs/cross-package.md) is that story end to end — four packages that do not import each other, consolidated into one statement.

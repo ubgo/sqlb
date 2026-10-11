@@ -132,12 +132,20 @@ go run github.com/ubgo/sqlb/contrib/vet/cmd/sqlb vet --dsn ./app.db ./...
 
 `--dsn` picks the driver from the connection string: a `postgres://` or `postgresql://` URL is Postgres through `pgx`, anything else is a SQLite path through `modernc.org/sqlite`. The source checks always run; `--dsn` adds the schema diff.
 
+To keep a binary instead, `go install github.com/ubgo/sqlb/contrib/vet/cmd/sqlb@latest`, or install the prebuilt `sqlb` and `sqlbvet` together from the [`sqlb` releases](https://github.com/ubgo/sqlb/releases?q=sqlb%2F&expanded=true) with the install script, which takes `VERSION=v0.1.1` to pin a release and `INSTALL_DIR=$HOME/.local/bin` to install without sudo; on Windows, `install.ps1` beside it:
+
+```
+curl -fsSL https://raw.githubusercontent.com/ubgo/sqlb/main/install.sh | sh
+```
+
 Under `go vet`, through `cmd/sqlbvet`, a `unitchecker` main over the same analyzers, for the places that already invoke `go vet` such as a golangci-lint configuration or an editor. The schema diff and the escape-hatch listing stay in `cmd/sqlb`, because the vet protocol carries neither a flag nor a connection. `TestVettool_RunsUnderGoVet` builds it and drives it through `go vet -vettool` over packages it generates, since a unitchecker main does nothing outside that protocol. One caveat, found by that test and reproduced by hand on Go 1.27.1: `go vet` caches a package's vet result in a way that does not carry a custom tool's findings, so a second `go vet -vettool` over an unchanged package — or one a plain `go vet` has already seen — reports nothing. Changed sources or `go clean -cache` make it run again. For a gate, use `vet.Check` or `cmd/sqlb vet`, which load and analyse every time; the vettool suits an editor, where the package at hand is the one that just changed:
 
 ```
 go build -o sqlbvet github.com/ubgo/sqlb/contrib/vet/cmd/sqlbvet
 go vet -vettool=./sqlbvet ./...
 ```
+
+The install script above puts a prebuilt `sqlbvet` beside `sqlb`, so it can be used without building it first; it is also published on its own as `sqlbvet_<version>_<os>_<arch>` archives on the [`sqlbvet` releases](https://github.com/ubgo/sqlb/releases?q=sqlbvet%2F&expanded=true).
 
 Programmatically, `Run(dir, patterns...)` returns the `Finding` values — each carrying `Pos`, `Analyzer`, `Message` and `Warning` — and `RunWith` takes the analyzer set; `Failing` says whether any finding is an error, which is what decides an exit code.
 
