@@ -187,6 +187,10 @@ tasks:
   # throwaway server, point the tests at it and take it away again. The
   # defaults below are what the scratch servers use; override any on the
   # command line, e.g. task test:mysql MYSQL_DSN='user:pw@tcp(host:3306)/db'.
+  # The test commands set SQLB_*_DSN inline rather than under env: because Task
+  # lets an exported shell variable beat a task's env: block, so a shell that
+  # exports SQLB_PG_DSN (a dev box's secrets file) would silently point
+  # test:pg18 at that database instead of the scratch container.
 
   engines:mysql:up:
     desc: Start a throwaway MySQL 8.4 container on 127.0.0.1:{{.MYSQL_PORT}} and wait until it accepts queries
@@ -252,10 +256,8 @@ tasks:
     desc: Run the Postgres proof against the scratch Postgres 18 container, which is what covers the constructs 17 refuses - virtual generated columns, NOT ENFORCED constraints, the wider ALTER CONSTRAINT and temporal keys
     vars:
       PG18_DSN: '{{.PG18_DSN | default "postgres://postgres:sqlb@127.0.0.1:54318/postgres?sslmode=disable"}}'
-    env:
-      SQLB_PG_DSN: '{{.PG18_DSN}}'
     cmds:
-      - go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/...
+      - SQLB_PG_DSN='{{.PG18_DSN}}' go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/...
 
   test:sqlite:
     desc: Run the SQLite proof - the conformance suite and every sqlite construct and DDL statement - with the race detector
@@ -267,19 +269,15 @@ tasks:
     desc: Run the Postgres proof against PG_DSN (default the scratch database) with the race detector - driver-pgx, vet's catalogue and drift checks, and the migration ledger
     vars:
       PG_DSN: '{{.PG_DSN | default "postgres:///sqlb_scratch?sslmode=disable"}}'
-    env:
-      SQLB_PG_DSN: '{{.PG_DSN}}'
     cmds:
-      - go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/...
+      - SQLB_PG_DSN='{{.PG_DSN}}' go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/...
 
   test:mysql:
     desc: Run the MySQL proof against MYSQL_DSN (default the scratch container) with the race detector - driver-mysql, vet's catalogue and drift checks, and the migration ledger
     vars:
       MYSQL_DSN: '{{.MYSQL_DSN | default "root:sqlb@tcp(127.0.0.1:33069)/sqlb"}}'
-    env:
-      SQLB_MYSQL_DSN: '{{.MYSQL_DSN}}'
     cmds:
-      - go test -race -count=1 ./contrib/driver-mysql/... ./contrib/vet/... ./contrib/migrate/...
+      - SQLB_MYSQL_DSN='{{.MYSQL_DSN}}' go test -race -count=1 ./contrib/driver-mysql/... ./contrib/vet/... ./contrib/migrate/...
 
   test:engines:
     desc: Start every scratch server, run the SQLite, Postgres 17, Postgres 18 and MySQL proofs, and remove the servers even when a proof fails
