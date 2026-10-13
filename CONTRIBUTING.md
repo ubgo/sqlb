@@ -10,7 +10,7 @@ That walks every module with `gofmt`, `go vet` and `go test`, then runs the two 
 
 The Postgres and MySQL proofs skip without a server, so a change touching SQL is also run on all three engines with `task test:engines`, which starts and removes throwaway servers itself. [COMMANDS.md](./COMMANDS.md) is every command this repository uses, with the exact lines each task runs.
 
-CI runs `volt ci` on every push and pull request through the volt-generated `ci.yml`: format, vet, lint and race tests of the changed modules. It does not run the type-check, zero-dependency or documentation gates, so `task check` is the real gate. `test.yml` and `lint.yml` are `workflow_dispatch` only.
+The volt-generated `ci.yml` runs `volt ci` on manual dispatch only (Actions minutes are a budget), not on push or pull request: format, vet, lint and race tests of the changed modules. It does not run the type-check, zero-dependency or documentation gates, so `task check` is the real gate. `test.yml` and `lint.yml` are `workflow_dispatch` only too.
 
 ## Where things stand
 
