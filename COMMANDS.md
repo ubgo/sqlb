@@ -123,7 +123,7 @@ volt release --from-tag contrib/vet/v0.1.1   # republish an existing tag, idempo
 volt gen install contrib/vet/cmd/sqlb        # regenerate install.sh and install.ps1 for the sqlb CLI
 ```
 
-Releases are cut with [volt](https://github.com/khanakia/voltkit/tree/main/apps/volt), one tag stream per module and CLI: `v0.1.1` for the core, `contrib/<name>/v0.1.1` for each contrib module, `sqlb/v0.1.1` and `sqlbvet/v0.1.0` for the two CLIs. Pushing a tag releases nothing; the release workflow is manual and runs `volt release --from-tag` on a tag that already exists. Never move or recreate a published tag: the Go checksum database has recorded it.
+Releases are cut with [volt](https://github.com/ubgo/voltkit/tree/main/apps/volt), one tag stream per module and CLI: `v0.1.1` for the core, `contrib/<name>/v0.1.1` for each contrib module, `sqlb/v0.1.1` and `sqlbvet/v0.1.0` for the two CLIs. Pushing a tag releases nothing; the release workflow is manual and runs `volt release --from-tag` on a tag that already exists. Never move or recreate a published tag: the Go checksum database has recorded it.
 
 ## Every task
 
