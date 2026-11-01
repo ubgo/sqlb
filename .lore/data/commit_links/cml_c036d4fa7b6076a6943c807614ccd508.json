@@ -1,0 +1,16 @@
+{
+  "_table": "commit_links",
+  "_v": 1,
+  "author": "ekuplu <e@solverhood.com>",
+  "committed_at": "2026-11-01T19:56:47+02:00",
+  "created_at": "2026-11-01T17:59:51.258507000Z",
+  "created_by_actor_id": "act_44e6f0f93d1174d1b1ad4c8d46b37885",
+  "entity_id": "run_01a1983690487b629718f1e6e38e6c2e",
+  "entity_table": "runs",
+  "id": "cml_c036d4fa7b6076a6943c807614ccd508",
+  "message": "Add shared Lore and Docsync workflow with executable promise inventory",
+  "project_id": "prj_01a198235aec7338a4c679214eeabefb",
+  "repo_path": null,
+  "sha": "06791ff7725db63e01a1664314855d9c7ecb18cd",
+  "updated_at": "2026-11-01T17:59:51.258507000Z"
+}

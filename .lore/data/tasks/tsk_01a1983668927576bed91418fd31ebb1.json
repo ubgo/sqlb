@@ -4,7 +4,7 @@
   "assigned_to_actor_id": null,
   "body": "User asked (verbatim):\nhttps://github.com/ubgo/sqlb implement the lore and docsync and then process this skill over to thsi repo https://github.com/thesatellite-ai/universal-skills/tree/main/satl-spec-promises\n\ncreate a public PR\n\nContext:\nRepository workflow setup for SQLB, shared between Codex and Claude Code.\n\nAcceptance:\nImplement the tools, apply the promise skill, validate, and create a public pull request.",
   "commitment": "accepted",
-  "completed_at": null,
+  "completed_at": "2026-11-01T17:59:50.980658000Z",
   "created_at": "2026-11-01T17:44:24.978357000Z",
   "created_by_actor_id": "act_44e6f0f93d1174d1b1ad4c8d46b37885",
   "deferred_until": null,
@@ -16,8 +16,8 @@
   "project_id": "prj_01a198235aec7338a4c679214eeabefb",
   "repo_id": null,
   "started_at": "2026-11-01T17:44:35.078065000Z",
-  "status": "in_progress",
+  "status": "done",
   "tasklist_id": "tlt_01a1983642097dc7a48c8a8f10fdb24f",
   "title": "Implement Lore, Docsync and the public promise gate",
-  "updated_at": "2026-11-01T17:44:35.078074000Z"
+  "updated_at": "2026-11-01T17:59:50.980949000Z"
 }

@@ -20,3 +20,6 @@ default = ""
 
 [agents]
 max_defs_per_run = 20
+
+[owners]
+"@maintainers" = ["ekuplu"]
