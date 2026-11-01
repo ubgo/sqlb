@@ -1,3 +1,8 @@
+---
+ds:
+  covers: [postgres-gate-ctc94x6a, mysql-gate-xzbtwu8b, postgres-extensions-j5kc5mqu]
+---
+
 # sqlb — typed SQL for Go
 
 **A typed SQL query builder for Go libraries that own tables and cannot carry an ORM. Zero dependencies.**
@@ -17,7 +22,7 @@ go get github.com/ubgo/sqlb/contrib/driver-pgx     # Postgres, through pgx's dat
 go get github.com/ubgo/sqlb/contrib/driver-mysql   # MySQL 8, through go-sql-driver/mysql
 ```
 
-Every module is tagged together: the core as `v0.1.0`, each contrib module as `contrib/<name>/v0.1.0`. Inside the repository a committed `go.work` resolves the modules against each other.
+The root and contrib modules have separate release streams; contrib tags use `contrib/<name>/vX.Y.Z`. The committed `go.work` resolves local modules together. See the [architecture and workspace guide](docs/architecture.md).
 
 The `sqlb` command-line checker, and the `sqlbvet` tool for `go vet -vettool`, install with `go install github.com/ubgo/sqlb/contrib/vet/cmd/sqlb@latest`, or as prebuilt binaries for macOS and Linux with `curl -fsSL https://raw.githubusercontent.com/ubgo/sqlb/main/install.sh | sh` (`install.ps1` on Windows); see [contrib/vet](contrib/vet/README.md).
 
@@ -28,7 +33,7 @@ A library that ships its own tables has a problem no ORM solves for it. It must 
 - **A column is an `Expr[T]`.** Comparing it with the wrong type, joining it to a mismatched column, or binding it to the wrong pointer is a compile error, not a runtime surprise.
 - **A query carries its own scan targets.** The column list and the destinations come from one slice, so inserting a column in the middle cannot silently shift a scan.
 - **Zero third-party dependencies in the core**, enforced by a gate rather than by good intentions. Embedding `sqlb` adds no driver, no cgo and no version conflict.
-- **Engine packages carry what one engine spells differently.** JSONB, arrays, ranges, full-text search, `DISTINCT ON`, `ON CONFLICT`, `MERGE` and `RETURNING` in `pg`; JSON1, FTS5 and both upsert forms in `sqlite`; `PREWHERE`, `FINAL` and `LIMIT BY` in `ch`. The `pg` surface is the large one — about five hundred constructs to the core's two hundred and sixty, which is what the universality rule produces: almost nothing is spelled identically by four engines.
+- **Engine packages carry what one engine spells differently.** JSONB, arrays, ranges, full-text search, `DISTINCT ON`, `ON CONFLICT`, `MERGE` and `RETURNING` in `pg`; JSON1, FTS5 and both upsert forms in `sqlite`; `PREWHERE`, `FINAL` and `LIMIT BY` in `ch`. MySQL-specific syntax lives in `mysql`. See the generated reference tables for the current surface.
 - **Extensions are sub-packages over exported guarded constructors**, so adding pgvector support, or the next extension nobody has written yet, never edits the engine package.
 
 ## Checked three times, not claimed once
@@ -49,7 +54,7 @@ _, err := sqlb.NewSelect(sqlb.SQLiteDialect{}).Columns(sqlb.Bind(dist, &d)).From
 
 This is the honest limit of the type system: engine expressions are checked when the statement is built, not when the program is compiled. The failure is still in your process and still names the construct — it is never a syntax error from the database at three in the morning.
 
-**3. A real database checks execution.** Rendering SQL and running it are different claims, and only execution proves the second. `sqlbtest` is a shared conformance suite every driver runs; `contrib/driver-sqlite` executes every `sqlite` construct against a real database, and `contrib/driver-pgx` executes every construct in `pg` and its eight extension packages — 593 cases — against Postgres 17, and the same suite again against Postgres 18 for the constructs 17 refuses. Those runs found eleven constructs whose rendering tests passed and whose SQL Postgres rejects, which is why execution, not rendering, is the bar for calling a construct proven. `ch` is the proof that the extension points carry a second engine; it has not been executed against a server.
+**3. A real database checks execution.** Rendering assertions and server execution provide different evidence. SQLite runs locally; Postgres and MySQL require their test DSNs. PostgreSQL cases also depend on server version and installed extensions, so a green run can include skips. ClickHouse has render tests without a live driver suite. See the [testing boundaries](docs/architecture.md#invariants-and-testing) and [engine guide](docs/engines.md#what-is-executed). [Postgres gate](ds:block?id=postgres-gate-ctc94x6a) [MySQL gate](ds:block?id=mysql-gate-xzbtwu8b) [Extension gate](ds:block?id=postgres-extensions-j5kc5mqu)
 
 ## How it compares
 
@@ -63,7 +68,7 @@ Columns are categories, not products, and every cell is a claim about this repos
 | A library can export typed columns for code that has never seen its schema | ✅ | ⚠️ only if both sides adopt the same tool | ❌ | ❌ |
 | An engine-only construct fails before reaching the database | ✅ | ⚠️ varies | ❌ | ❌ |
 | Driver proven by a shared conformance suite | ✅ | ⚠️ varies | ❌ | ❌ |
-| Migrations, relation graph, generated models | ❌ | ✅ | ❌ | ❌ |
+| Relation graph, generated models | ❌ | ✅ | ❌ | ❌ |
 
 If you want migrations, a relation graph and generated models, an ORM is the right tool. If you want a library's tables to be joinable by code that has never seen its schema, without either side adopting the other's ORM, that is `sqlb`.
 
@@ -337,7 +342,7 @@ Every snippet above is the shape a test in this repository builds and checks. Th
 
 **Is sqlb an ORM?**
 
-No. There is no relation graph, no code generation, no derived DDL, no lazy loading and no migrations. It builds SQL text and bound arguments, and executes them through `database/sql`. If you want an ORM, use one.
+SQLB has no relation graph, model generator or lazy loading. It builds SQL and executes queries through `database/sql`; optional authored DDL and `contrib/migrate` provide schema creation and migration execution. See the [schema pipeline](docs/architecture.md#schema-and-migrations).
 
 **Does it generate code?**
 

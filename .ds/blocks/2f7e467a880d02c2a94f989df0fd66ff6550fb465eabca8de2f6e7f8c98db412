@@ -1,0 +1,37 @@
+func TestPromise_BoundValuesStayOutOfSQL(t *testing.T) {
+	table := sqlb.Table{Name: "promise_values", Alias: "v"}
+	col := sqlb.Col[string](table, "value")
+	for _, d := range []sqlb.Dialect{postgres.Dialect{}, sqlite.Dialect{}, mysql.Dialect{}, clickhouse.Dialect{}} {
+		t.Run(sqlb.DialectName(d), func(t *testing.T) {
+			for _, value := range []string{"", "'; DROP TABLE promise_values; --", "a\x00b", "日本語\\'\""} {
+				for name, build := range map[string]func() (sqlb.Query, error){
+					"Param": func() (sqlb.Query, error) { return sqlb.NewSelect(d).Exprs(sqlb.Param(value)).From(table).Build() },
+					"Eq": func() (sqlb.Query, error) {
+						return sqlb.NewSelect(d).Exprs(col).From(table).Where(sqlb.Eq(col, value)).Build()
+					},
+					"In": func() (sqlb.Query, error) {
+						return sqlb.NewSelect(d).Exprs(col).From(table).Where(sqlb.In(col, value)).Build()
+					},
+					"Set": func() (sqlb.Query, error) { return sqlb.NewInsert(d).Into(table).Row(sqlb.Set(col, value)).Build() },
+				} {
+					t.Run(name+"/"+strconv.Quote(value), func(t *testing.T) {
+						q, err := build()
+						if err != nil {
+							t.Fatal(err)
+						}
+						if !reflect.DeepEqual(q.Args, []any{value}) {
+							t.Fatalf("bound argument changed: %#v", q.Args)
+						}
+						if value != "" && strings.Contains(q.SQL, value) {
+							t.Fatalf("request value reached SQL: %s", q.SQL)
+						}
+						again, err := build()
+						if err != nil || !reflect.DeepEqual(q, again) {
+							t.Fatalf("repeat build changed: %#v, %v", again, err)
+						}
+					})
+				}
+			}
+		})
+	}
+}

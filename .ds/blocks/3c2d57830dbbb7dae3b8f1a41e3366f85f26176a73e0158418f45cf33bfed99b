@@ -1,0 +1,17 @@
+def main():
+    result = subprocess.run(
+        ['git', 'ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', '*.md'],
+        cwd=ROOT, check=True, capture_output=True,
+    )
+    # Tool-generated instructions/data are not the public software specification.
+    excluded = {'.agents', '.claude', '.ds', '.lore', 'docsi', 'testdata'}
+    docs = sorted({p for p in result.stdout.decode().split('\0')
+                   if p and not excluded.intersection(Path(p).parts)})
+    if not docs:
+        raise SystemExit('promise gate: no public Markdown found')
+    command = [sys.executable, str(ROOT / 'scripts/spec-promises'), 'check',
+               '--list', 'testdata/promises.txt', '--tests', '**/*_test.go',
+               '--tests', 'scripts/check-typecheck.py']
+    for doc in docs:
+        command.extend(['--spec', doc])
+    return subprocess.run(command, cwd=ROOT).returncode

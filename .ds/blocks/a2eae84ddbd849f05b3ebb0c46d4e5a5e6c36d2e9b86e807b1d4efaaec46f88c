@@ -1,0 +1,35 @@
+func One(ctx context.Context, db DBTX, q stmt.Query) error {
+	if q.Targets == nil {
+		return stmt.ErrNoTargets
+	}
+	// A Query holds pointers into the caller's variables, so an overlapping
+	// execution writes another goroutine's rows into them. Refuse rather than
+	// interleave; see stmt.ErrQueryInUse.
+	if !q.Acquire() {
+		return stmt.ErrQueryInUse
+	}
+	defer q.Release()
+	rows, err := db.QueryContext(ctx, q.SQL, q.Args...)
+	if err != nil {
+		return fmt.Errorf("sqlb: query: %w", err)
+	}
+	// Close releases the connection. Its error is deliberately dropped: a
+	// failure during iteration already reaches the caller through rows.Err()
+	// below, and a failure only on release tells the caller nothing they can
+	// act on while masking the real result.
+	defer func() { _ = rows.Close() }()
+
+	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("sqlb: iterate: %w", err)
+		}
+		return ErrNoRows
+	}
+	if err := rows.Scan(q.Targets...); err != nil {
+		return fmt.Errorf("sqlb: scan: %w", err)
+	}
+	if rows.Next() {
+		return ErrMultipleRows
+	}
+	return rows.Err()
+}

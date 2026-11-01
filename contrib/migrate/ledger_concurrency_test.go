@@ -115,6 +115,7 @@ func applyWhileHeld(t *testing.T, release func(), apply func() ([]string, error)
 // It runs twice: with a busy timeout, where BEGIN IMMEDIATE waits inside
 // SQLite, and without one, where the ledger's own retry of a refused BEGIN is
 // what waits.
+// promise:migration-lock
 func TestLedger_SQLiteWaitsForTheWriteLockInsteadOfFailingAnUpgrade(t *testing.T) {
 	for name, pragmas := range map[string]string{"busy timeout": busyPragmas, "no busy timeout": ""} {
 		t.Run(name, func(t *testing.T) { waitsForTheWriteLock(t, pragmas) })

@@ -1,0 +1,16 @@
+func Col[T any](t Table, name string) Expr[T] {
+	return Expr[T]{
+		render: func(a *render.Args) string {
+			d := a.Dialect()
+			switch {
+			case a.Unqualified():
+				return d.QuoteIdent(name)
+			case a.ByTableName():
+				return t.Qualified(d) + "." + d.QuoteIdent(name)
+			}
+			return t.Qualifier(d) + "." + d.QuoteIdent(name)
+		},
+		table: t,
+		name:  name,
+	}
+}

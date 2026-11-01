@@ -34,6 +34,7 @@ func tail(t *testing.T, cls ...ddl.TableClause[postgres.Dialect]) string {
 // TestOptionRank_RankedOptionsRenderInRankOrder is the fix itself: options
 // passed in any order render in the order their ranks give. See
 // ddl.OptionRank for why the statement sorts rather than refusing.
+// promise:ddl-ordering
 func TestOptionRank_RankedOptionsRenderInRankOrder(t *testing.T) {
 	want := " A B C"
 	for name, cls := range map[string][]ddl.TableClause[postgres.Dialect]{
@@ -55,6 +56,7 @@ func TestOptionRank_RankedOptionsRenderInRankOrder(t *testing.T) {
 // default place for an unknown option is right in every case, so keeping the
 // caller's placement is the one choice that never makes a correct statement
 // wrong.
+// promise:ddl-ordering
 func TestOptionRank_UnrankedOptionsStayWhereTheCallerPutThem(t *testing.T) {
 	// Positions 0 and 2 are ranked and swap; the raw one at 1 does not move.
 	if got, want := tail(t, opt(2, "B"), raw("RAW"), opt(1, "A")), " A RAW B"; got != want {

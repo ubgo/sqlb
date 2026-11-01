@@ -175,6 +175,7 @@ func TestTableShape_TypedTableIsAlterOnly(t *testing.T) {
 
 // TestTableShape_RefuseIncompleteValues pins that each new clause fails Build
 // rather than rendering a statement with a name or a keyword missing.
+// promise:pg-recursive-view
 func TestTableShape_RefuseIncompleteValues(t *testing.T) {
 	table := func(c ...ddl.TableClause[pg.Dialect]) (ddl.Script, error) {
 		return pg.CreateTable(tUsers).Column(ddl.Column(tUserID)).Clause(c...).Build()

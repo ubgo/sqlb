@@ -25,6 +25,7 @@ import (
 // builders go to die. Anything else an engine has or lacks is expressed as an
 // optional interface (see Named, Returning) so a dialect never has to lie
 // about a capability it does not have.
+// ds:def id=dialect-contract-smkbmeyz
 type Dialect interface {
 	Placeholder(n int) string
 	QuoteIdent(ident string) string
@@ -33,13 +34,15 @@ type Dialect interface {
 // Named is satisfied by dialects that can name their engine. The name appears
 // in ErrUnsupportedDialect messages and is what engine packages compare
 // against. Dialects that do not implement it are reported as DialectUnknown.
+// ds:def id=dialect-name-zexakxbc
 type Named interface {
 	Name() string
 }
 
 // Returning is satisfied by dialects that support INSERT ... RETURNING. A
-// write builder type-asserts for it and uses the documented two-statement
-// fallback when it is absent.
+// write builder type-asserts for it and reports its no-RETURNING error when
+// RETURNING is requested without this capability. It does not synthesize a
+// second statement to retrieve the written row.
 type Returning interface {
 	SupportsReturning() bool
 }
@@ -251,6 +254,7 @@ func NewArgs(d Dialect) *Args { return &Args{dialect: d} }
 func NewInlineArgs(d Dialect) *Args { return &Args{dialect: d, inline: true} }
 
 // Next appends v and returns the placeholder for its position.
+// ds:def id=parameter-flow-pdh445xg
 func (a *Args) Next(v any) string {
 	if a.inline {
 		return a.Literal(v)

@@ -1,0 +1,24 @@
+func All[T any, D render.Dialect](ctx context.Context, db exec.DBTX, s *stmt.Select[D], r Reader[T]) ([]T, error) {
+	q, err := build(s, r)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := db.QueryContext(ctx, q.SQL, q.Args...)
+	if err != nil {
+		return nil, fmt.Errorf("sqlb/scan: query: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var out []T
+	for rows.Next() {
+		dests, value := r.alloc()
+		if err := rows.Scan(dests...); err != nil {
+			return nil, fmt.Errorf("sqlb/scan: scan: %w", err)
+		}
+		out = append(out, value())
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("sqlb/scan: rows: %w", err)
+	}
+	return out, nil
+}

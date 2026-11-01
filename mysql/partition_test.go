@@ -71,6 +71,7 @@ func TestPartitioning_Renders(t *testing.T) {
 // column, a foreign key, bounds that do not increase, MAXVALUE not last, a
 // duplicated or missing name, the wrong number of values, the wrong kind of
 // definition, and no definitions at all.
+// promise:mysql-partitioning
 func TestPartitioning_RefusesWhatMySQLRefuses(t *testing.T) {
 	byYear := mysql.PartitionByRange(mysql.PartitionOn(orderYear))
 	build := func(p mysql.Partitioning, keys ...mysql.TableClause) error {

@@ -1,0 +1,3 @@
+func Nullable[T any](e Expr[T]) Expr[*T] {
+	return Expr[*T](e)
+}

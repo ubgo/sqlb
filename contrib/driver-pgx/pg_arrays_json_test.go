@@ -10,6 +10,7 @@ import (
 
 // TestPGConstructs_Arrays executes every array construct in pg against a
 // real Postgres.
+// ds:def id=postgres-arrays-5w7ytu86
 func TestPGConstructs_Arrays(t *testing.T) {
 	db := catalogue(t)
 	expr(t, db, "Array", pg.Array(int32(1), 2, 3))

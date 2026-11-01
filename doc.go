@@ -39,7 +39,8 @@
 //
 // [github.com/ubgo/sqlb/scan] is the other strategy and does not have that
 // hazard: it returns values rather than writing through pointers, so one
-// Reader is safe to share across any number of concurrent executions. Neither
+// Reader built with fresh per-row destinations and concurrency-safe mapping
+// functions can be shared between executions. Neither
 // is deprecated. Binding is shorter to write and fits most queries; scanning
 // is what a query shared between goroutines, cached, or held in a struct
 // field needs.
@@ -69,27 +70,22 @@
 // The core holds only what Postgres, MySQL 8, SQLite and ClickHouse all
 // accept with the same syntax and the same meaning. Anything one engine
 // spells differently lives in that engine's package, [github.com/ubgo/sqlb/pg],
-// [github.com/ubgo/sqlb/sqlite] or [github.com/ubgo/sqlb/ch], even when two
+// [github.com/ubgo/sqlb/sqlite], [github.com/ubgo/sqlb/mysql] or
+// [github.com/ubgo/sqlb/ch], even when two
 // engines agree.
 //
-// MySQL is a reference engine only. This module has no MySQL dialect and
-// cannot render for it, so that quarter of the rule is checked by reading
-// MySQL's documentation rather than by building a statement. The other three
-// are real: each has a dialect package under dialect/ and a construct package. Every engine
-// construct records its name through Args.Unsupported, so rendering it under
-// the wrong dialect fails at Build with [ErrUnsupportedDialect] rather than at
-// the database.
+// All four engines have dialect and construct packages. Engine constructs
+// record unsupported use through Args.Unsupported, so a wrong-dialect render
+// fails at Build with ErrUnsupportedDialect. Server versions and installed
+// extensions remain runtime concerns.
 //
 // # What it is not
 //
-// It is not an ORM. There is no relation graph, no code generation, no
-// derived DDL and no lazy loading in this module, and there will not be.
-//
-// That is a statement about this module rather than about the repository.
-// [github.com/ubgo/sqlb/schema] describes what tables exist, and contrib
-// modules act on that description, which is how DDL gets derived without any
-// of it leaking down here. The separation is the point: a library that only
-// needs to build a query pays for none of it.
+// It is not an ORM: there is no relation graph, lazy loading or model generator.
+// The ddl package builds explicitly authored schema statements. schema describes
+// tables and their dependencies; contrib/migrate can plan creation, install
+// contributed DDL and execute checksum-tracked migrations. These are opt-in
+// layers, so a caller building queries need not use schema management.
 //
 // # Zero dependencies
 //

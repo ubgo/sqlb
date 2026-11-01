@@ -1,0 +1,32 @@
+type Statement struct {
+	SQL string
+
+	// Transactional is false for a statement Postgres refuses inside a
+	// transaction block: CREATE INDEX CONCURRENTLY, DROP INDEX CONCURRENTLY and
+	// DETACH PARTITION ... CONCURRENTLY, each measured against Postgres 17. A
+	// runner must execute such a statement on its own, never in a batch.
+	Transactional bool
+
+	// OutsideTransaction is true for a statement that is a silent no-op inside
+	// a transaction. SQLite's PRAGMA foreign_keys is the one known case: set to
+	// OFF after BEGIN it still reads 1, with no error, which is how a table
+	// rebuild wrapped in one transaction quietly loses its guard. A runner must
+	// execute it before opening any transaction.
+	OutsideTransaction bool
+
+	// MustReturnNoRows is true for a check rather than a change: a statement
+	// that reports a problem by returning rows instead of failing. SQLite's
+	// PRAGMA foreign_key_check is the case, at the end of a table rebuild; a
+	// runner must query it and fail on any row, because executing it and
+	// ignoring the result reports success whatever it found.
+	MustReturnNoRows bool
+
+	// SkipIf is a query, and a runner that finds it returns a row skips the
+	// statement. It is how an engine without IF NOT EXISTS for a statement
+	// still writes a repeatable one: MySQL's CREATE INDEX has none, so its
+	// IfNotExists sets SkipIf to a query for the index in the catalogue. A
+	// runner that ignores the field runs the statement anyway, and a second
+	// run fails loudly with a duplicate, rather than doing something else;
+	// contrib/migrate's Execute honours it. Empty means always run.
+	SkipIf string
+}

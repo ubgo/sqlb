@@ -1,3 +1,8 @@
+---
+ds:
+  covers: [manual-workflow-4epxh4zk]
+---
+
 # Commands
 
 Every command this repository uses, and why. Every command is a [Taskfile](https://taskfile.dev) task, so `task --list` shows them all and nothing here has to be retyped. The first half is the workflows; the second half is generated from `Taskfile.yml` and is every task with the exact commands it runs, so it cannot drift from what the tasks do.
@@ -23,7 +28,7 @@ task check    # gofmt, vet and tests in every module, the negative type-check bu
 task lint     # golangci-lint in every module; must report zero issues
 ```
 
-`task check` is the gate a change is held to. CI runs `volt ci` on every push and pull request through the volt-generated `ci.yml`, which covers format, vet, lint and race tests but not the type-check, zero-dependency or documentation gates, so the local gate is the real one. `task check` runs the Postgres and MySQL proofs too, but they skip loudly when no server is configured; the next section is how to run them for real.
+`task check` is the gate a change is held to. GitHub Actions are manual-dispatch in this repository; they do not run automatically on a push or pull request. Run the full local gate before requesting review. [Manual test workflow](ds:block?id=manual-workflow-4epxh4zk) `task check` runs the Postgres and MySQL proofs too, but they skip loudly when no server is configured; the next section is how to run them for real.
 
 ## Running the proof on all three engines
 
@@ -129,7 +134,7 @@ Releases are cut with [volt](https://github.com/ubgo/voltkit/tree/main/apps/volt
 
 <!-- BEGIN GENERATED TASKS -->
 
-Generated from `Taskfile.yml` by `python3 scripts/gen-commands-doc.py`; `task docs:commands` fails when it is stale. 50 tasks.
+Generated from `Taskfile.yml` by `python3 scripts/gen-commands-doc.py`; `task docs:commands` fails when it is stale. 54 tasks.
 
 `MODULES` is `. contrib/driver-sqlite contrib/driver-pgx contrib/driver-mysql contrib/vet contrib/migrate contrib/debug contrib/structbind`; a task that says *for each MODULE* runs its step in each of those directories.
 
@@ -144,6 +149,8 @@ task zerodep
 task reuse:check
 task tasks:check
 task docs:check
+task promises:check
+task docsync:check
 ```
 
 ### `task check:modules`
@@ -299,6 +306,14 @@ FAIL if a per-package page's Setup block does not compile
 python3 scripts/check-doc-setup.py
 ```
 
+### `task docsync:check`
+
+Check documentation references against their defined blocks
+
+```sh
+ds --no-update check --frozen
+```
+
 ### `task engines:mysql:down`
 
 Stop the scratch MySQL container, which --rm then removes with its data
@@ -394,12 +409,31 @@ Format every Go file
 gofmt -w .
 ```
 
+### `task knowledge:setup`
+
+Hydrate Lore and scan documentation after cloning (requires lore and ds)
+
+```sh
+lore setup
+task lore:render
+ds --no-update scan
+```
+
 ### `task lint`
 
 Run golangci-lint in every module
 
 ```sh
 task module:lint
+```
+
+### `task lore:render`
+
+Refresh shared Lore context for Claude Code and Codex
+
+```sh
+lore render --repo=sqlb
+lore render --repo=sqlb --target=AGENTS.md
 ```
 
 ### `task module:check` (internal)
@@ -479,6 +513,15 @@ echo "--- {{.DIR}}"
 sh {{if eq .DIR "."}}scripts{{else}}../../scripts{{end}}/uncovered.sh cover.out
 ```
 
+### `task promises:check`
+
+Check every documented promise against its inventory and named test
+
+```sh
+python3 scripts/check-promises.py
+python3 -m unittest discover -s scripts -p 'test_spec_promises.py'
+```
+
 ### `task reuse:check`
 
 FAIL if a function taking a statement is not covered by the reuse test
@@ -554,12 +597,8 @@ Variables, each overridable on the command line as `task test:mysql NAME=value`:
 
 - `MYSQL_DSN`, default `root:sqlb@tcp(127.0.0.1:33069)/sqlb`
 
-Environment it sets for its commands:
-
-- `SQLB_MYSQL_DSN`, set from `MYSQL_DSN`
-
 ```sh
-go test -race -count=1 ./contrib/driver-mysql/... ./contrib/vet/... ./contrib/migrate/...
+SQLB_MYSQL_DSN='{{.MYSQL_DSN}}' go test -race -count=1 ./contrib/driver-mysql/... ./contrib/vet/... ./contrib/migrate/...
 ```
 
 ### `task test:pg`
@@ -570,12 +609,8 @@ Variables, each overridable on the command line as `task test:pg NAME=value`:
 
 - `PG_DSN`, default `postgres:///sqlb_scratch?sslmode=disable`
 
-Environment it sets for its commands:
-
-- `SQLB_PG_DSN`, set from `PG_DSN`
-
 ```sh
-go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/...
+SQLB_PG_DSN='{{.PG_DSN}}' go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/...
 ```
 
 ### `task test:pg18`
@@ -586,12 +621,8 @@ Variables, each overridable on the command line as `task test:pg18 NAME=value`:
 
 - `PG18_DSN`, default `postgres://postgres:sqlb@127.0.0.1:54318/postgres?sslmode=disable`
 
-Environment it sets for its commands:
-
-- `SQLB_PG_DSN`, set from `PG18_DSN`
-
 ```sh
-go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/...
+SQLB_PG_DSN='{{.PG18_DSN}}' go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/...
 ```
 
 ### `task test:race`

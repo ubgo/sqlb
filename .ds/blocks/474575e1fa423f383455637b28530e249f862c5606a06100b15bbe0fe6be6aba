@@ -1,0 +1,17 @@
+func (Dialect) NumericParam(placeholder string, v any) string {
+	rv := reflect.ValueOf(v)
+	for rv.Kind() == reflect.Pointer {
+		if rv.IsNil() {
+			return placeholder
+		}
+		rv = rv.Elem()
+	}
+	switch rv.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return castAs(placeholder, castSigned)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return castAs(placeholder, castUnsigned)
+	default:
+		return placeholder
+	}
+}

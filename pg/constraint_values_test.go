@@ -87,6 +87,7 @@ func TestTableConstraint_RefusesAnotherTable(t *testing.T) {
 }
 
 // TestDomainConstraint_RefusesAnotherDomain pins the domain counterpart.
+// promise:pg-domain-constraint
 func TestDomainConstraint_RefusesAnotherDomain(t *testing.T) {
 	email := pg.Domain[string]{Schema: "auth", Name: "email"}
 	other := pg.Domain[string]{Schema: "auth", Name: "handle"}

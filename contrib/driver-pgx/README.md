@@ -2,7 +2,7 @@
 
 Opens Postgres for `github.com/ubgo/sqlb` through `github.com/jackc/pgx/v5`'s `database/sql` adapter, and is where the `pg` package is **executed** rather than asserted.
 
-This module exists for the tests more than for the driver. `pg` holds five hundred exported constructs, and until this module every one of them was checked as rendered text: a comparison with another Go builder found a table declared without an alias rendering a quoted empty identifier, which SQLite accepts and Postgres rejects, so the entire suite stayed green while the SQL was invalid on the engine the package is named after. The conformance suite and the construct catalogue here run against a real server, which is the only thing that turns an asserted construct into a proven one.
+This module exists for the tests more than for the driver. `pg` has a broad engine-specific surface, originally checked as rendered text: a comparison with another Go builder found a table declared without an alias rendering a quoted empty identifier, which SQLite accepts and Postgres rejects, so the entire suite stayed green while the SQL was invalid on the engine the package is named after. The conformance suite and the construct catalogue here run against a real server, which is the only thing that turns an asserted construct into a proven one.
 
 ## Contents
 

@@ -66,6 +66,7 @@ func TestDescribe_ClausesThatDescribeThemselves(t *testing.T) {
 
 // TestDescribe_FailsWhereBuildWould pins that a column Build could not spell
 // fails Describe too, so a description never exists for DDL that does not.
+// promise:ddl-describe
 func TestDescribe_FailsWhereBuildWould(t *testing.T) {
 	if _, err := ddl.NewCreateTable(postgres.Dialect{}, users).Column(ddl.Column(profile)).Describe(); err == nil {
 		t.Error("a json.RawMessage with no type was described")

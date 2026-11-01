@@ -137,6 +137,7 @@ func TestForms_ColumnKeyOnConflictExecutes(t *testing.T) {
 // TestForms_DeferrabilityExecutes pins the one setting that changes behaviour,
 // against the one that does not. A deferred key lets a transaction leave a
 // reference dangling in the middle; an immediate one does not.
+// promise:sqlite-fk-actions
 func TestForms_DeferrabilityExecutes(t *testing.T) {
 	ctx := context.Background()
 	db := formsDB(t)
@@ -194,6 +195,7 @@ func TestForms_DeferrabilityExecutes(t *testing.T) {
 
 // TestForms_RaiseRefusesTheRow is the trigger form: a constraint a CHECK
 // cannot express, enforced by RAISE, with the message arriving as the error.
+// promise:sqlite-raise
 func TestForms_RaiseRefusesTheRow(t *testing.T) {
 	ctx := context.Background()
 	db := formsDB(t)
@@ -282,6 +284,7 @@ func TestForms_TemporaryObjectsExecute(t *testing.T) {
 
 // TestForms_TemporaryQualifiedIsTheEnginesRule pins that Build's refusal
 // matches SQLite's rather than being stricter or laxer than it.
+// promise:sqlite-temp
 func TestForms_TemporaryQualifiedIsTheEnginesRule(t *testing.T) {
 	ctx := context.Background()
 	db := formsDB(t)
@@ -551,6 +554,8 @@ func TestForms_CreateTableAsTemporaryExecutes(t *testing.T) {
 // The plain NOT NULL is the control: without the clause the same insert
 // fails, so a case that passes because the row was always legal is not
 // possible.
+// promise:sqlite-ddl-live
+// promise:sqlite-notnull-conflict
 func TestForms_NotNullOnConflictChangesWhatAnInsertDoes(t *testing.T) {
 	ctx := context.Background()
 	db := formsDB(t)
@@ -631,6 +636,7 @@ func TestForms_NotNullOnConflictChangesWhatAnInsertDoes(t *testing.T) {
 // to the column fails — which is exactly why it had to move to Build, since a
 // schema that installs cleanly and fails months later in production is the
 // failure this module exists to prevent.
+// promise:sqlite-notnull-conflict
 func TestForms_NotNullReplaceNeedsADefault(t *testing.T) {
 	ctx := context.Background()
 	db := formsDB(t)

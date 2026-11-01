@@ -1,0 +1,13 @@
+func openOrSkip(t *testing.T) *sql.DB {
+	t.Helper()
+	dsn, ok := drivermysql.DSNFromEnv()
+	if !ok {
+		t.Skipf("%s not set: the MySQL proof did not run", drivermysql.EnvDSN)
+	}
+	db, err := drivermysql.Open(dsn)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	return db
+}

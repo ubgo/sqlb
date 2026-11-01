@@ -14,6 +14,7 @@ import (
 
 // The race that started this, re-run against a real database with a real
 // connection pool. It is now refused instead of corrupting the result.
+// ds:def id=query-overlap-5hddx8sm
 func TestSharedQuery_IsRefusedNotRaced(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "r.db")
 	db, err := driversqlite.Open(path, driversqlite.WithMaxOpenConns(8))

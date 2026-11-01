@@ -66,6 +66,7 @@ var extDDL = []string{
 // server is a property of the server, so reporting it as a failure would make
 // a Postgres 18 container that carries no pgvector look like a broken suite;
 // the skip says which extension is missing, so a skip is never silent.
+// ds:def id=postgres-extensions-j5kc5mqu
 func requireExts(t *testing.T, db *sql.DB) {
 	t.Helper()
 	ctx := context.Background()
@@ -111,6 +112,7 @@ func xPred(t *testing.T, db *sql.DB, name string, p sqlb.Predicate) {
 
 // TestPGExtensions_Execute executes every construct in the eight extension
 // sub-packages.
+// promise:pg-live
 func TestPGExtensions_Execute(t *testing.T) {
 	db := extCatalogue(t)
 

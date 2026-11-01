@@ -1,0 +1,19 @@
+func TestBitwise_FailsUnderAnotherDialect(t *testing.T) {
+	tbl := sqlb.Table{Name: "flags", Alias: "f"}
+	tag := sqlb.Col[int](tbl, "tag")
+
+	q, err := sqlb.NewSelect(sqlb.SQLiteDialect{}).
+		Exprs(pg.BitAnd(tag, sqlb.Param(16))).
+		From(tbl).
+		Build()
+
+	if !errors.Is(err, sqlb.ErrUnsupportedDialect) {
+		t.Fatalf("got %v, want ErrUnsupportedDialect", err)
+	}
+	if q.SQL != "" || len(q.Args) != 0 || len(q.Targets) != 0 {
+		t.Fatalf("partial query escaped failure: %#v", q)
+	}
+	if !strings.Contains(err.Error(), "sqlite") {
+		t.Errorf("the error should name the dialect it failed under: %v", err)
+	}
+}

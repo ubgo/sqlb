@@ -24,7 +24,7 @@ import (
 // Each case runs inside a transaction that is rolled back, so a lock, a write
 // or a DDL statement leaves nothing behind and the cases cannot depend on one
 // another. The count of constructs this file covers is stated in
-// docs/status.md rather than implied; it is not all five hundred.
+// docs/status.md rather than implied; it is not the entire exported surface.
 
 var (
 	catUser  = sqlb.Table{Name: "cat_user", Alias: "u"}
@@ -199,6 +199,7 @@ func catalogue(t *testing.T) *sql.DB {
 	return db
 }
 
+// promise:pg-live
 func TestPGConstructs_Execute(t *testing.T) {
 	db := catalogue(t)
 

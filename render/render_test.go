@@ -45,6 +45,7 @@ func TestRender_ServesANonSQLTarget(t *testing.T) {
 // TestRender_ImportsOnlyStdlib pins the floor. render is the bottom of the
 // module because the next level down is a driver, which is third-party by
 // definition, so a non-stdlib import here would mean the floor had moved.
+// promise:render-boundary
 func TestRender_ImportsOnlyStdlib(t *testing.T) {
 	pkg, err := build.ImportDir(".", 0)
 	if err != nil {
@@ -59,6 +60,7 @@ func TestRender_ImportsOnlyStdlib(t *testing.T) {
 
 // TestArgs_FirstErrorWins pins the sticky-error rule that lets every render
 // function keep a single string return value while Build still fails closed.
+// promise:render-errors
 func TestArgs_FirstErrorWins(t *testing.T) {
 	a := render.NewArgs(gremlinish{})
 	first := errors.New("first")
@@ -73,6 +75,7 @@ func TestArgs_FirstErrorWins(t *testing.T) {
 
 // TestArgs_UnsupportedNamesConstructAndDialect keeps the error message useful:
 // it is the only thing a caller sees when a construct meets the wrong engine.
+// promise:engine-guard
 func TestArgs_UnsupportedNamesConstructAndDialect(t *testing.T) {
 	a := render.NewArgs(gremlinish{})
 	a.Unsupported("pg.Merge")

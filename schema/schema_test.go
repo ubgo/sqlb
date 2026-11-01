@@ -74,6 +74,8 @@ func appTables() []schema.Table {
 // know invoices exist; the application knows only a table name. The order
 // emerges from putting them in one Set, which is the argument for having a
 // shared schema vocabulary at all.
+// promise:schema-composition
+// ds:def id=schema-order-mc4m9j96
 func TestSet_OrdersTablesFromPackagesThatDoNotKnowEachOther(t *testing.T) {
 	set, err := schema.New("ubgo/auth", authTables()...)
 	if err != nil {
@@ -102,10 +104,18 @@ func TestSet_OrdersTablesFromPackagesThatDoNotKnowEachOther(t *testing.T) {
 // stable order. Kahn's algorithm leaves that freedom, and resolving it by map
 // iteration would make a generated migration change shape between runs for no
 // reason.
+// promise:schema-order
 func TestSet_SortIsDeterministic(t *testing.T) {
 	build := func() []string {
 		set, _ := schema.New("a", authTables()...)
 		_ = set.Add("b", appTables()...)
+		// Independent tables exercise the tie-break, not just one forced
+		// dependency chain. Add in reverse lexical order deliberately.
+		for _, name := range []string{"z_independent", "m_independent", "a_independent"} {
+			if err := set.Add("independent", schema.Table{Name: name, Columns: []schema.Column{{Name: "id", Type: schema.TypeBigInt}}}); err != nil {
+				t.Fatal(err)
+			}
+		}
 		sorted, err := set.Sorted()
 		if err != nil {
 			t.Fatal(err)
@@ -127,6 +137,7 @@ func TestSet_SortIsDeterministic(t *testing.T) {
 // TestSet_DuplicateTableNamesBothOwners is the collision two independent
 // packages will actually hit. The fix is a prefix or a schema, and you cannot
 // choose one without being told who collided.
+// promise:schema-duplicate
 func TestSet_DuplicateTableNamesBothOwners(t *testing.T) {
 	set, err := schema.New("ubgo/auth", schema.Table{
 		Name: "users", Columns: []schema.Column{{Name: "id", Type: schema.TypeUUID}},
@@ -151,6 +162,7 @@ func TestSet_DuplicateTableNamesBothOwners(t *testing.T) {
 // is found. A library names its target by string so it need not import the
 // owner; the cost is that the name is unchecked until assembly, and this is
 // assembly.
+// promise:schema-missing
 func TestSet_MissingReferenceIsCaughtOnAssembly(t *testing.T) {
 	set, _ := schema.New("the application", appTables()...)
 	_, err := set.Sorted()
@@ -164,6 +176,7 @@ func TestSet_MissingReferenceIsCaughtOnAssembly(t *testing.T) {
 
 // TestSet_CycleIsReportedWithItsMembers pins that an impossible schema names the
 // tables involved rather than announcing that a cycle exists somewhere.
+// promise:schema-order
 func TestSet_CycleIsReportedWithItsMembers(t *testing.T) {
 	mk := func(name, ref string) schema.Table {
 		return schema.Table{
@@ -233,6 +246,7 @@ func TestSchema_BridgesToTheQueryBuilder(t *testing.T) {
 // TestSchema_ColRejectsTheWrongGoType pins the mistake this package can
 // actually catch. Asking for an int from a text column is a scan failure in
 // production and an error at declaration time here.
+// ds:def id=schema-types-r4ut75bs
 func TestSchema_ColRejectsTheWrongGoType(t *testing.T) {
 	users := authTables()[0]
 	if _, err := schema.Col[int](users, "email"); !errors.Is(err, schema.ErrTypeMismatch) {
@@ -250,6 +264,7 @@ func TestSchema_ColRejectsTheWrongGoType(t *testing.T) {
 // spelling refuses exactly what Col refuses, so using it in a var block trades
 // the error for a panic and gives up no checking. The panic carries Col's own
 // error, which is what makes the failure readable at package load.
+// promise:schema-col-type
 func TestSchema_MustColPanicsOnEveryMistakeColReports(t *testing.T) {
 	users := authTables()[0]
 
@@ -325,6 +340,7 @@ var allowed = map[string]bool{
 
 // TestSchema_ImportsOnlyExpr keeps this layer describing rather than doing. A
 // schema that imported stmt would be a migration engine wearing the wrong name.
+// promise:schema-boundary
 func TestSchema_ImportsOnlyExpr(t *testing.T) {
 	pkg, err := build.ImportDir(".", 0)
 	if err != nil {

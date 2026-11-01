@@ -40,6 +40,7 @@ type Contribution struct {
 // database, installed together. A nil table is ErrNilTable rather than a
 // panic, since a Tables slice built conditionally is where one comes from.
 // No contributions give an empty Script.
+// ds:def id=migration-install-ennvmeq2
 func Install(contribs ...Contribution) (ddl.Script, error) {
 	byKey := map[string]Table{}
 	set, err := schema.New("")
@@ -162,6 +163,7 @@ func beginDeferred(ctx context.Context, conn *sql.Conn) (txn, error) {
 }
 
 // execute is Execute with the transaction's opening chosen by the caller.
+// ds:def id=migration-execute-hgdykxdq
 func execute(ctx context.Context, conn *sql.Conn, s ddl.Script, begin beginner) error {
 	var tx txn
 	commit := func() error {

@@ -1,0 +1,12 @@
+func TestSchema_ColRejectsTheWrongGoType(t *testing.T) {
+	users := authTables()[0]
+	if _, err := schema.Col[int](users, "email"); !errors.Is(err, schema.ErrTypeMismatch) {
+		t.Fatalf("want ErrTypeMismatch, got %v", err)
+	}
+	if _, err := schema.Col[string](users, "nope"); err == nil {
+		t.Fatal("an undeclared column must be an error")
+	}
+	if _, err := schema.Col[*string](users, "email"); !errors.Is(err, schema.ErrTypeMismatch) {
+		t.Fatalf("a NOT NULL column asked for as a pointer must be rejected, got %v", err)
+	}
+}

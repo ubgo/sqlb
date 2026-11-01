@@ -1,0 +1,32 @@
+func TestQuoteLiteral_MySQL(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		v    any
+		want string
+	}{
+		{"plain string", "active", `'active'`},
+		{"quote doubled", "it's", `'it''s'`},
+		{"a hostile string stays one literal", `x'); DROP TABLE t; --`, `'x''); DROP TABLE t; --'`},
+		{"true", true, `TRUE`},
+		{"false", false, `FALSE`},
+		{"int", 42, `42`},
+		{"float", 2.25, `2.25`},
+		{"bytes are a hex literal", []byte{0xde, 0xad}, `X'dead'`},
+		{"time in UTC with no zone", time.Date(2026, 1, 2, 3, 4, 5, 6000, time.FixedZone("x", 3600)), `'2026-01-02 02:04:05.000006'`},
+		{"nil", nil, `NULL`},
+		{"named string", status("active"), `'active'`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := mysql.Dialect{}.QuoteLiteral(tc.v)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.want {
+				t.Fatalf("got  %s\nwant %s", got, tc.want)
+			}
+		})
+	}
+	if _, err := (mysql.Dialect{}).QuoteLiteral(`a\b`); !errors.Is(err, render.ErrNotInlinable) {
+		t.Fatalf("a backslash: got %v, want ErrNotInlinable; no spelling reads the same under NO_BACKSLASH_ESCAPES", err)
+	}
+}

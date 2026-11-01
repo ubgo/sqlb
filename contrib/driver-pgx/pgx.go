@@ -6,7 +6,7 @@
 // lives out here, and an application pays for it only by importing this
 // module.
 //
-// The module's real work is its tests. The pg package holds five hundred
+// The module's real work is its tests. The pg package has many
 // exported constructs and, until this module existed, not one of them had run
 // against a Postgres server: rendered text was checked and nothing else. A
 // comparison with another Go builder showed exactly what that hides — a table

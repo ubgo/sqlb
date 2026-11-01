@@ -1,14 +1,13 @@
+---
+ds:
+  covers: [dialect-contract-smkbmeyz, dialect-name-zexakxbc, returning-refusal-uxpx3yu9]
+---
+
 # Dialects
 
 A dialect is the smallest thing that differs between engines, and it is deliberately tiny.
 
-```go
-type Dialect interface {
-	Placeholder(n int) string
-	QuoteIdent(ident string) string
-	Name() string
-}
-```
+The required methods are `Placeholder` and `QuoteIdent`; `Name` belongs to the optional `Named` interface. [Dialect contract](ds:block?id=dialect-contract-smkbmeyz) [Engine naming](ds:block?id=dialect-name-zexakxbc)
 
 `PostgresDialect{}` renders `$1` and quotes with `"`. `SQLiteDialect{}` renders `?` and quotes with `"`. That is most of the difference between them, and keeping the interface this small is what stops the dialect from becoming the place where engine behaviour accumulates.
 
@@ -20,15 +19,15 @@ An engine that has more than the minimum says so by satisfying another interface
 |---|---|
 | `Returning` | does `INSERT ... RETURNING` exist |
 | `InsertAliasing` | may an INSERT target take an alias |
-| `Named` | does the engine take named parameters |
+| `Named` | what engine name identifies this dialect |
 
-A builder asks with a type assertion, so a dialect that lacks a capability is never forced to lie about it, and adding a capability does not break the dialects that do not have it. `Insert.Returning` on a dialect without `Returning` fails with `ErrNoReturning`, which names the two-statement fallback.
+A builder asks with a type assertion, so a dialect that lacks a capability is never forced to lie about it, and adding a capability does not break the dialects that do not have it. The typed returning helpers require a returning-capable dialect; the rendering path also checks that capability and fails with `ErrNoReturning` if it is absent or false. The error suggests an insert-then-select fallback for the caller to implement; the builder does not synthesize it. [Rendering refusal](ds:block?id=returning-refusal-uxpx3yu9)
 
 ## Args
 
 `Args` accumulates the bound values while a statement renders. It carries the dialect, so an expression can bind a parameter at render time rather than only at construction. That is what makes a JSON path with a bound key, a vector distance with a bound vector, or a `date_trunc` with a bound unit expressible at all.
 
-It also carries the first error. `Unsupported` records a construct the dialect cannot render, `Fail` records anything else, and `Build` returns whichever came first. Rendering never panics and never produces half a statement.
+It also carries the first error. `Unsupported` records a construct the dialect cannot render, `Fail` records anything else, and `Build` returns whichever came first. Built-in validation returns an error rather than a partial query. This is not a panic recovery boundary: caller-supplied dialects and render callbacks remain responsible for their own behavior.
 
 ## Failing closed
 
@@ -53,7 +52,7 @@ Engine **clauses** do not get that far. A clause is typed to its dialect and its
 
 ## Adding a dialect from another repository
 
-A community package can ship a complete engine: a dialect, its constructs, and a driver. Nothing in this module is privileged, no list here needs editing, and the engine name is a plain string rather than a member of a closed set. The constants in `dialect.go` name the three engines this repository ships; the core never branches on them, and `DialectName` asks the `Named` interface, so any name works.
+A community package can ship a complete engine: a dialect, its constructs, and a driver. Nothing in this module is privileged, no list here needs editing, and the engine name is a plain string rather than a member of a closed set. The constants in `render/render.go` name the engines this repository ships; the core never branches on them, and `DialectName` asks the `Named` interface, so any name works.
 
 `engine_test.go` in the core is the proof. It builds a DuckDB engine in package `sqlb_test`, which can reach nothing unexported, so whatever it does is what an outside package can do.
 

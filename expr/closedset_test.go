@@ -30,6 +30,7 @@ func render1(w interface {
 // TestClosedSets_RefuseAValueOutsideTheirConstants pins both halves at every
 // core site that writes a closed set verbatim. Both halves matter: a check
 // that refuses everything passes the first and is useless.
+// promise:closed-sets
 func TestClosedSets_RefuseAValueOutsideTheirConstants(t *testing.T) {
 	col := expr.Col[int64](expr.Table{Name: "users", Alias: "u"}, "age")
 

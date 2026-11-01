@@ -35,6 +35,7 @@ func afTable() *pg.CreateTableReady {
 // actions and reads each effect back: the expression the server stored, the
 // identity's kind and its next value, and the column left plain after the
 // identity and the expression are dropped.
+// promise:pg-identity-live
 func TestDDL_PostgresChangesAGeneratedColumnAndAnIdentity(t *testing.T) {
 	inTx(t, func(tx *sql.Tx) {
 		ctx := context.Background()
@@ -267,6 +268,7 @@ type afMoney struct{ Cents int64 }
 // reloptions back. security_invoker is the one a library shipping a view over
 // its own row-level-secured tables needs, and nothing about the view's text
 // says whether it is on.
+// promise:pg-check-option
 func TestDDL_PostgresViewOptions(t *testing.T) {
 	inTx(t, func(tx *sql.Tx) {
 		runB(t, tx, afTable())

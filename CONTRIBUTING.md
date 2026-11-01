@@ -6,11 +6,15 @@
 task check
 ```
 
-That walks every module with `gofmt`, `go vet` and `go test`, then runs the two gates the repository cannot ship without: the negative type-check build, and the zero-dependency check on the core. Everything must be green before a change is proposed.
+That walks every module with `gofmt`, `go vet` and `go test`, then runs the negative type-check build, zero-dependency, reuse, task, documentation, promise and Docsync checks. Everything must be green before a change is proposed.
 
 The Postgres and MySQL proofs skip without a server, so a change touching SQL is also run on all three engines with `task test:engines`, which starts and removes throwaway servers itself. [COMMANDS.md](./COMMANDS.md) is every command this repository uses, with the exact lines each task runs.
 
 The volt-generated `ci.yml` runs `volt ci` on manual dispatch only (Actions minutes are a budget), not on push or pull request: format, vet, lint and race tests of the changed modules. It does not run the type-check, zero-dependency or documentation gates, so `task check` is the real gate. `test.yml` and `lint.yml` are `workflow_dispatch` only too.
+
+## Shared project knowledge
+
+Install Lore and Docsync on your PATH before running the gate, then run `task knowledge:setup` after cloning. See [the shared workflow](./docs/knowledge-workflow.md) for setup, skill loading and review acknowledgments. Keep behavior claims and their entries in `testdata/promises.txt` together with the asserting test.
 
 ## Where things stand
 

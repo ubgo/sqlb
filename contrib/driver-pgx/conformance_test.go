@@ -15,6 +15,7 @@ import (
 // say so in its output, or a green run means nothing. The gate runs this
 // package like every other; whether the proof actually ran is visible in the
 // skip count, and the docs say which it was.
+// ds:def id=postgres-gate-ctc94x6a
 func openOrSkip(t *testing.T) *sql.DB {
 	t.Helper()
 	dsn, ok := driverpgx.DSNFromEnv()
@@ -29,7 +30,7 @@ func openOrSkip(t *testing.T) *sql.DB {
 	return db
 }
 
-// setupDDL is sqlbtest.Schema in Postgres's spelling. sqlb generates no DDL, so
+// setupDDL is sqlbtest.Schema in Postgres's spelling. the suite owns its fixture DDL, so
 // every integration writes this once, and the conformance suite binds to the
 // names it declares.
 var setupDDL = []string{
@@ -57,6 +58,7 @@ var teardownDDL = []string{
 
 // TestConformance runs the shared suite against a real Postgres, which is
 // the second engine the builder's rendering is proven on rather than asserted.
+// promise:conformance-reset
 func TestConformance(t *testing.T) {
 	db := openOrSkip(t)
 	cfg := sqlbtest.Config{

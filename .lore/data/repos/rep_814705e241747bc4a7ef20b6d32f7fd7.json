@@ -1,0 +1,12 @@
+{
+  "_table": "repos",
+  "_v": 1,
+  "archived_at": null,
+  "created_at": "2026-11-01T18:55:40.408159000Z",
+  "display_name": null,
+  "id": "rep_814705e241747bc4a7ef20b6d32f7fd7",
+  "mount_name": "sqlb",
+  "origin_url": "https://github.com/ubgo/sqlb.git",
+  "project_id": "prj_01a198235aec7338a4c679214eeabefb",
+  "updated_at": "2026-11-01T18:55:40.408159000Z"
+}

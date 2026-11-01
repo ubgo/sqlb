@@ -209,7 +209,7 @@ Each returns a `WinFn[T]`, not an expression: `.Over(window)` or `.OverNamed(nam
 
 `RowNumber`, `Rank` and `DenseRank` are **not** here: all four engines spell them identically, so they are core, as [`expr.RowNumber`](../expr/README.md). That split is the universality rule, and it is the reason this package is worth reading alongside `expr` rather than instead of it.
 
-`Lag` and `LagDefault` differ in return type, not just arguments: without a default the first row is `NULL`, so it is `Expr[*int]`; with one it never is. The compiler makes you handle the difference.
+`Lag` and `LagDefault` differ in return type, not just arguments: without a default the first row is `NULL`, so it is `Expr[*int]`; with a default and a non-nullable input the missing-row result has type `Expr[int]`. A SQL NULL in an existing input row is not replaced by the default; nullable inputs retain their nullable Go type. The compiler makes you handle the difference.
 
 ## Locking
 
@@ -698,7 +698,7 @@ Generated from the source by `task docs:reference`. Every exported name in `pg` 
 | `pg.WeightC` | — |
 | `pg.WeightD` | — |
 | `pg.ToTSVector` | to_tsvector(config, e) |
-| `pg.WebsearchToTSQuery` | the safe form for user input: it never raises a syntax error |
+| `pg.WebsearchToTSQuery` | WebsearchToTSQuery accepts malformed search-query text without a query-syntax error |
 | `pg.PlainToTSQuery` | plainto_tsquery(config, $n): every word ANDed, with operators in the input treated as text |
 | `pg.PhraseToTSQuery` | phraseto_tsquery(config, $n): the words in order and adjacent, which is a phrase search |
 | `pg.ToTSQuery` | ToTSQuery raises a syntax error on malformed input |
@@ -1333,7 +1333,7 @@ Generated from the source by `task docs:reference`. Every exported name in `pg` 
 | `pg.IsJSON` | e IS JSON [kind] [WITH UNIQUE KEYS] (PG16) |
 | `pg.JSONValueOption` | JSONValueOption configures JSON_VALUE and JSON_QUERY (PG17) |
 | `pg.Returning` | Returning sets the RETURNING type of JSON_VALUE |
-| `pg.WithWrapper` | WithWrapper wraps the result in an array always |
+| `pg.WithWrapper` | WithWrapper wraps a matched result in an array |
 | `pg.WithoutWrapper` | the value bare, and raises when the path matched more than one |
 | `pg.WithConditionalWrapper` | WithConditionalWrapper wraps only when the path matched more than one value |
 | `pg.JSONValue` | JSON_VALUE(doc, 'path' ...) typed R (PG17) |

@@ -18,6 +18,7 @@ import (
 // construction instead of by remembering Clone. The table walks every method
 // that adds something, because the guarantee is only worth having if it holds
 // for all of them: one method still mutating would be the one somebody uses.
+// promise:builder-immutability
 func TestBuilders_MethodsDoNotWriteToTheirReceiver(t *testing.T) {
 	d := postgres.Dialect{}
 	tbl := expr.Table{Name: "t", Alias: "t"}
@@ -92,6 +93,7 @@ func TestBuilders_MethodsDoNotWriteToTheirReceiver(t *testing.T) {
 // while the commit message claimed all four. A guarantee that holds for one
 // builder and not its siblings is worse than none: it teaches the pattern and
 // then breaks it where nobody is looking.
+// promise:builder-immutability
 func TestWriteBuilders_MethodsDoNotWriteToTheirReceiver(t *testing.T) {
 	d := postgres.Dialect{}
 	tbl := expr.Table{Name: "t", Alias: "t"}
@@ -151,6 +153,7 @@ func mustSQL(t *testing.T, b interface{ Build() (stmt.Query, error) }) string {
 // dropped that: the SQL would still be right and the interleaved writes would
 // not. Clone is the deliberate act of starting a separate statement, and only
 // Clone resets the guard.
+// promise:query-overlap
 func TestDerived_SharesTheExecutionGuard(t *testing.T) {
 	d := postgres.Dialect{}
 	tbl := expr.Table{Name: "t", Alias: "t"}

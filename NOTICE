@@ -4,3 +4,8 @@ Copyright 2026 ubgo
 This product includes software developed at ubgo (https://github.com/ubgo/sqlb).
 
 Licensed under the Apache License, Version 2.0. See the LICENSE file for terms.
+
+The spec-promises checker in scripts/spec-promises comes from
+thesatellite-ai/universal-skills, satl-spec-promises (version 0.1.0), commit
+b62ad0dd268c79510410b36b808fb512e5439f2a.
+Source: https://github.com/thesatellite-ai/universal-skills/tree/main/satl-spec-promises

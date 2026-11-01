@@ -161,6 +161,7 @@ func (anonymousDialect) QuoteIdent(id string) string { return id }
 
 // Constructs render under their own engine and fail closed under every other,
 // with no code in this module knowing the engine exists.
+// promise:external-extensions
 func TestExternalConstructs_RenderAndGuard(t *testing.T) {
 	cases := map[string]sqlb.SQLer{
 		"ListValue":  duckListValue(duckName, sqlb.Param("x")),
@@ -380,6 +381,7 @@ func TestSlotString(t *testing.T) {
 // the renderer emits. The test puts a marker in each SELECT slot and asserts
 // they come out in grammar order, which fails if a slot is unrendered, in the
 // wrong place, or missing from the middle of the statement.
+// promise:select-boundaries
 func TestEverySelectBoundary_IsReachable(t *testing.T) {
 	selectSlots := []struct {
 		slot   sqlb.Slot
@@ -448,6 +450,7 @@ func TestEverySelectBoundary_IsReachable(t *testing.T) {
 }
 
 // The same for the write statements, so no boundary is SELECT-only.
+// promise:select-boundaries
 func TestEveryWriteBoundary_IsReachable(t *testing.T) {
 
 	q, err := sqlb.NewInsert(duckDialect{}).Into(duckTable).

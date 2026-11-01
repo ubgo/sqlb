@@ -1,0 +1,12 @@
+{
+  "_table": "architecture_notes",
+  "_v": 1,
+  "body": "Install calls Describe on contributed table builders, assembles schema.Set, validates dependencies and builds tables in sorted order. Execute runs the resulting Script on a pinned connection and interprets transaction, check and conditional-execution flags. Ledger adds owner/name identities, script checksums and locking around migration execution. The separation is needed because statement rendering, dependency ordering and operational execution have different failure boundaries. MySQL implicit DDL commits mean partial migration recovery needs repeatable authored scripts.\n\nEvidence: ds:block?id=migration-install-ennvmeq2; ds:block?id=schema-sort-wshjpc9c; ds:block?id=ddl-contract-s2xdb9he; ds:block?id=migration-execute-hgdykxdq; ds:block?id=migration-ledger-h5dv2yvb. See docs/architecture.md and docs/operating-notes.md. Verified from the implementation and tests on 2026-11-01; server-test gates are explicitly distinguished from execution.",
+  "created_at": "2026-11-01T18:56:18.634166000Z",
+  "created_by_actor_id": "act_44e6f0f93d1174d1b1ad4c8d46b37885",
+  "id": "anr_01a198783aca7288929e88397b478473",
+  "project_id": "prj_01a198235aec7338a4c679214eeabefb",
+  "repo_id": "rep_814705e241747bc4a7ef20b6d32f7fd7",
+  "title": "DDL planning and execution pipeline",
+  "updated_at": "2026-11-01T18:56:18.634166000Z"
+}

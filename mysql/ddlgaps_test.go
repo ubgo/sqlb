@@ -117,6 +117,10 @@ func TestGaps_Render(t *testing.T) {
 // checked here: an unknown ENGINE is a warning and the server's default, an
 // unknown row format is an error far from the call, and two characteristics
 // of one kind are silently resolved to the last.
+// promise:mysql-alter-characteristic
+// promise:mysql-function-mode
+// promise:mysql-schedule
+// promise:mysql-signal
 func TestGaps_ClosedSetsAreRefused(t *testing.T) {
 	for name, tc := range map[string]struct {
 		b    interface{ Build() (ddl.Script, error) }

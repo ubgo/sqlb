@@ -1,0 +1,11 @@
+func TestScan_ExistingProjectionIsNotIgnored(t *testing.T) {
+	s := byAge().Exprs(personAge)
+	_, err := scan.All(context.Background(), seeded(t, ""), s, personReader)
+	if err == nil || !strings.Contains(err.Error(), "expected 3 destination arguments in Scan, not 2") {
+		t.Fatalf("want projection-width scan error, got %v", err)
+	}
+	q, err := s.Build()
+	if err != nil || q.SQL != `SELECT "p"."age" FROM "people" AS "p" ORDER BY "p"."age" ASC` {
+		t.Fatalf("reader changed caller's statement: %q, %v", q.SQL, err)
+	}
+}

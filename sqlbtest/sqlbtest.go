@@ -262,6 +262,7 @@ func caseParamOrder(t *testing.T, c Config) {
 	}
 }
 
+// ds:def id=null-scan-9xxzyqc7
 func caseNullScan(t *testing.T, c Config) {
 	// The NULL is written explicitly rather than through SetDefault, because
 	// DEFAULT inside a VALUES list is not portable: Postgres has it, SQLite

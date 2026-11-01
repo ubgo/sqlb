@@ -1,0 +1,25 @@
+spec = "1.0"
+prefix = "ds"
+
+[scan]
+code = ["**"]
+docs = ["docs/**", "**/README.md", "README.md", "SECURITY.md", "COMMANDS.md", "CHANGELOG.md"]
+exclude = ["**/testdata/**", "**/node_modules/**", "**/vendor/**", "dist/**", "public/**", ".lore/**", ".claude/**", ".agents/**", ".ds/**"]
+generated = ["**/*.pb.go", "**/gen/**", "**/*_gen.go", "**/*_gen.ts"]
+
+[include]
+mode = "build"
+max_lines = 40
+
+[check]
+fuzzy_threshold = 0.8
+unacked = "error"
+
+[env]
+default = ""
+
+[agents]
+max_defs_per_run = 20
+
+[owners]
+"@maintainers" = ["ekuplu"]

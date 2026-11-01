@@ -30,6 +30,8 @@ This module is pre-GA. Under SemVer a `v0.x` release may break, so the only supp
 
 ## Scope
 
-The library builds SQL text and bound arguments. The security property it is responsible for is that a value which enters through `Param`, `Set`, `In` or a predicate leaves as a bound parameter and never as SQL text. A report showing request data reaching the statement string is in scope and treated as a vulnerability.
+The library builds SQL text and bound arguments. In ordinary query mode, the security property it is responsible for is that a value which enters through `Param`, `Set`, `In` or a predicate leaves as a bound parameter and never as SQL text. A report showing request data reaching the statement string is in scope and treated as a vulnerability.
+
+Explicit literal mode (`NewInlineArgs`, `BuildInline`, and DDL builders) deliberately writes dialect-quoted values into SQL and is separate from the ordinary binding guarantee. Unsupported literal values fail with an error.
 
 Out of scope: `Literal` and the `QuoteLit` helpers in the engine packages, which render their argument into the statement by design and are documented for author-chosen constants only. Passing request data to them is a caller error, not a library vulnerability. The same applies to a raw string handed to `ExecContext` around the builder.

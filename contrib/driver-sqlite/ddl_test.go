@@ -160,6 +160,7 @@ func TestTask_RemoveALibrarysTables(t *testing.T) {
 // Build. The modernc driver stores a bound time.Time as Go's String form, which
 // no literal matches, so a time default would never compare equal to a time
 // the application wrote.
+// promise:sqlite-time-default
 func TestDDL_SQLiteRefusesATimeDefault(t *testing.T) {
 	when := sqlb.Col[time.Time](ddlPeople, "created_at")
 	_, err := sqlite.CreateTable(ddlPeople).Column(ddl.Column(when).Default(time.Now())).Build()
@@ -175,6 +176,7 @@ func ptr[T any](v T) *T { return &v }
 // makes the unique email case-insensitive, the virtual column computes, ON
 // CONFLICT IGNORE drops a duplicate silently, AUTOINCREMENT never reuses a
 // rowid, and the foreign key cascades.
+// promise:sqlite-autoincrement
 func TestDDL_SQLiteKeysStrictAndGeneratedColumnsHold(t *testing.T) {
 	ctx := context.Background()
 	db, err := driversqlite.Memory()
@@ -260,6 +262,7 @@ func TestDDL_SQLiteKeysStrictAndGeneratedColumnsHold(t *testing.T) {
 // would let a migration pass in CI and fail on the first production database.
 // Build therefore refuses all four unconditionally, and this test is what
 // says the choice is deliberate rather than a mistake about the engine.
+// promise:sqlite-add-column
 func TestDDL_SQLiteRefusalsMatchTheEngine(t *testing.T) {
 	ctx := context.Background()
 	rowDependent := map[string]string{
@@ -312,6 +315,7 @@ func TestDDL_SQLiteRefusalsMatchTheEngine(t *testing.T) {
 // query with its filter, a view over a query-builder body reads, a trigger
 // whose body is an ordinary INSERT writes the audit row only when the status
 // changes, and user_version reads back.
+// promise:sqlite-ddl-live
 func TestDDL_SQLiteIndexesViewsTriggersAndPragmas(t *testing.T) {
 	ctx := context.Background()
 	db, err := driversqlite.Memory()

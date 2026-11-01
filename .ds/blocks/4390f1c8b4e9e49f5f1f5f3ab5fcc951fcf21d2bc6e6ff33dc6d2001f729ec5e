@@ -1,0 +1,3 @@
+func NewGuardedQuery(g Guard, sql string, args, targets []any) Query {
+	return newQueryWith(g.g, sql, args, targets)
+}

@@ -103,6 +103,8 @@ func TestQuoteLiteral_SQLite(t *testing.T) {
 
 // TestQuoteLiteral_MySQL pins MySQL's rule: quotes doubled, a backslash
 // refused, bytes and times in forms that read the same under every sql_mode.
+// promise:mysql-backslash
+// ds:def id=mysql-literals-23295m4b
 func TestQuoteLiteral_MySQL(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -140,6 +142,9 @@ func TestQuoteLiteral_MySQL(t *testing.T) {
 // value outside it is an error naming the problem, never a best guess, since
 // a guessed literal is either an injection or a value the engine stores
 // differently from what was written.
+// promise:literal-refusal
+// promise:sqlite-time-default
+// ds:def id=literal-refusals-3xx754he
 func TestQuoteLiteral_RefusesWhatItCannotWriteFaithfully(t *testing.T) {
 	quoters := map[string]render.LiteralQuoting{"postgres": postgres.Dialect{}, "sqlite": sqlite.Dialect{}, "mysql": mysql.Dialect{}}
 	refused := map[string]any{
@@ -171,6 +176,8 @@ func TestQuoteLiteral_RefusesWhatItCannotWriteFaithfully(t *testing.T) {
 // module has ever run against a ClickHouse server, so a quoter written from its
 // documentation would be an unverified claim in the one place a wrong rule is
 // an injection. A dialect declines by not implementing the interface.
+// promise:capability-interfaces
+// promise:literal-refusal
 func TestQuoteLiteral_ClickHouseDeclines(t *testing.T) {
 	var d render.Dialect = clickhouse.Dialect{}
 	if _, ok := d.(render.LiteralQuoting); ok {

@@ -1,0 +1,7 @@
+func (a *Args) Next(v any) string {
+	if a.inline {
+		return a.Literal(v)
+	}
+	a.values = append(a.values, v)
+	return a.dialect.Placeholder(len(a.values))
+}

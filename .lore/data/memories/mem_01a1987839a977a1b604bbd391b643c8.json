@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Testing layers and evidence limits. task check runs module formatting, vet and tests, then negative type checks, the zero-dependency gate, reuse/task/doc checks, the promise gate and frozen Docsync validation. SQLite tests execute locally. PostgreSQL and MySQL integration tests skip without SQLB_PG_DSN and SQLB_MYSQL_DSN; PostgreSQL extension availability and server version add further gates. ClickHouse has render coverage here, not a live driver suite. A green default run therefore differs from verified server execution.\n\nEvidence: ds:block?id=gate-9g2wphfm; ds:block?id=workspace-f7vpgvxp; ds:block?id=postgres-gate-ctc94x6a; ds:block?id=mysql-gate-xzbtwu8b; ds:block?id=postgres-arrays-5w7ytu86; ds:block?id=postgres-extensions-j5kc5mqu; ds:block?id=promise-gate-a57aksdv. See docs/architecture.md and docs/operating-notes.md. Verified from the implementation and tests on 2026-11-01; server-test gates are explicitly distinguished from execution.",
+  "confidence": null,
+  "created_at": "2026-11-01T18:56:18.345498000Z",
+  "created_by_actor_id": "act_44e6f0f93d1174d1b1ad4c8d46b37885",
+  "id": "mem_01a1987839a977a1b604bbd391b643c8",
+  "kind": "core",
+  "last_validated_at": null,
+  "project_id": "prj_01a198235aec7338a4c679214eeabefb",
+  "repo_id": "rep_814705e241747bc4a7ef20b6d32f7fd7",
+  "source_kind": "manual",
+  "source_ref": "ds:block?id=gate-9g2wphfm; ds:block?id=workspace-f7vpgvxp; ds:block?id=postgres-gate-ctc94x6a; ds:block?id=mysql-gate-xzbtwu8b; ds:block?id=postgres-arrays-5w7ytu86; ds:block?id=postgres-extensions-j5kc5mqu; ds:block?id=promise-gate-a57aksdv",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-11-01T18:56:18.345520000Z",
+  "updated_at": "2026-11-01T18:56:18.345498000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

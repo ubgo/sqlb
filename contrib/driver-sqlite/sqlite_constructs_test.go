@@ -98,6 +98,7 @@ func scalar[T any](t *testing.T, db *sql.DB, e sqlb.Expr[T]) T {
 // Every JSON1 helper, run against a real document, with the answer checked.
 // A construct that rendered plausible-looking SQL and meant something else
 // shows up here and nowhere earlier.
+// promise:sqlite-json-arrow
 func TestJSON1_Executes(t *testing.T) {
 	db := constructsDB(t)
 	seedConstructs(t, db)

@@ -1,0 +1,10 @@
+{
+  "_table": "actors",
+  "_v": 1,
+  "created_at": "2026-11-01T17:23:36.299093000Z",
+  "display_name": "e",
+  "id": "act_44e6f0f93d1174d1b1ad4c8d46b37885",
+  "kind": "human",
+  "stable_key": "human:e@solverhood.com",
+  "updated_at": "2026-11-01T17:23:36.299094000Z"
+}

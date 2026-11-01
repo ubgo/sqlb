@@ -91,6 +91,7 @@ CREATE FUNCTION "rows"() RETURNS SETOF bigint LANGUAGE "sql" TRANSFORM FOR TYPE 
 // TestFunction_BodyIsDollarQuotedAwayFromItself pins that a body containing
 // the tag is quoted with one it does not contain, which is what keeps a body
 // from ending its own quote.
+// promise:pg-function-quote
 func TestFunction_BodyIsDollarQuotedAwayFromItself(t *testing.T) {
 	got := build(t)(pg.CreateFunction(pg.Function{Name: "f"}, pg.LangSQL, "SELECT '$sqlb$'").Returns(pg.Returns(fnBigint)).Build())
 	if !strings.Contains(got, "$sqlb1$SELECT '$sqlb$'$sqlb1$") {
@@ -102,6 +103,7 @@ func TestFunction_BodyIsDollarQuotedAwayFromItself(t *testing.T) {
 // the case worth having: a function that neither returns anything nor has an
 // output parameter is refused here rather than by the server, because the
 // statement it would render is meaningless rather than wrong.
+// promise:pg-function-result
 func TestFunction_RefuseIncompleteValues(t *testing.T) {
 	cases := []struct {
 		name string
@@ -143,6 +145,7 @@ func TestFunction_RefuseIncompleteValues(t *testing.T) {
 // TestFunction_TriggerFunctionTakesNoParameters pins that a Function declaring
 // parameters is refused by every trigger statement rather than having them
 // dropped, which is the one way the shared Function value could lie.
+// promise:pg-trigger-params
 func TestFunction_TriggerFunctionTakesNoParameters(t *testing.T) {
 	f := pg.Function{Name: "touch", Params: []pg.FunctionArg{pg.Arg("a", fnBigint)}}
 	if _, err := pg.CreateTriggerFunction(f, "BEGIN RETURN NEW; END").Build(); !errors.Is(err, pg.ErrTriggerSignature) {

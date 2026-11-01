@@ -1,0 +1,3 @@
+func New[T any](cols []render.SQLer, alloc func() (dests []any, value func() T)) Reader[T] {
+	return Reader[T]{cols: cols, alloc: alloc}
+}

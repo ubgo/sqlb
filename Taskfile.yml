@@ -16,7 +16,7 @@ tasks:
     cmds:
       - task --list
 
-  check:
+  check:   # ds:def id=gate-9g2wphfm
     desc: The gate - every module formatted, vetted and tested, plus the core's own gates
     cmds:
       - task: check:modules
@@ -25,6 +25,8 @@ tasks:
       - task: reuse:check
       - task: tasks:check
       - task: docs:check
+      - task: promises:check
+      - task: docsync:check
 
   check:modules:
     desc: fmt, vet and test in every module
@@ -374,3 +376,26 @@ tasks:
     cmds:
       - go test ./examples/pgsurface/... -run Example -v
 
+  promises:check:
+    desc: Check every documented promise against its inventory and named test
+    cmds:
+      - python3 scripts/check-promises.py
+      - python3 -m unittest discover -s scripts -p 'test_spec_promises.py'
+
+  docsync:check:
+    desc: Check documentation references against their defined blocks
+    cmds:
+      - ds --no-update check --frozen
+
+  lore:render:
+    desc: Refresh shared Lore context for Claude Code and Codex
+    cmds:
+      - lore render --repo=sqlb
+      - lore render --repo=sqlb --target=AGENTS.md
+
+  knowledge:setup:
+    desc: Hydrate Lore and scan documentation after cloning (requires lore and ds)
+    cmds:
+      - lore setup
+      - task: lore:render
+      - ds --no-update scan

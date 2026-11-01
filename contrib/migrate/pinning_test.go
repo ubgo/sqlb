@@ -24,6 +24,8 @@ import (
 //     and SQLite refuses the row;
 //   - through ExecuteDB, every statement runs on the connection it pinned, and
 //     the row is written.
+//
+// promise:migration-pinning
 func TestExecute_PinningIsWhatMakesAConnectionSettingHold(t *testing.T) {
 	ctx := context.Background()
 	script := func(t *testing.T) ddl.Script {

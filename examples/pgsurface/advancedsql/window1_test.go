@@ -25,6 +25,7 @@ func Example_s1_1_maxPerDept() {
 }
 
 // 1.1 the OVER clause with no parameter: a window of the whole table.
+// promise:catalogue-star
 func Example_s1_1_maxOverAll() {
 	show(sel().Columns(sqlb.Bindings(EmpBindings(&sink.emp), []sqlb.Binding{
 		sqlb.Bind(sqlb.As(sqlb.Over(sqlb.Max(Salary), sqlb.NewWindow()), "max_salary"), &sink.i32),

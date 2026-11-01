@@ -45,6 +45,7 @@ func buildAll(t *testing.T, bs ...interface{ Build() (ddl.Script, error) }) stri
 }
 
 // TestObjects_SchemasExtensionsAndEnums renders section 6.1 and 6.2.
+// promise:pg-extension-no-cascade
 func TestObjects_SchemasExtensionsAndEnums(t *testing.T) {
 	got := buildAll(t,
 		pg.CreateSchema(oAuth).IfNotExists(),
@@ -128,6 +129,7 @@ DROP INDEX CONCURRENTLY IF EXISTS "auth"."b"`
 }
 
 // TestIndexes_ConcurrentlyIsNotTransactional pins the flag a runner reads.
+// promise:nontransactional-index
 func TestIndexes_ConcurrentlyIsNotTransactional(t *testing.T) {
 	for name, b := range map[string]interface{ Build() (ddl.Script, error) }{
 		"create": pg.CreateIndex(pg.Index{Name: "i"}, tUsers).Concurrently().On(pg.IndexKey(tEmail)),
@@ -169,6 +171,7 @@ COMMENT ON TYPE "auth"."user_status" IS 'x'`
 }
 
 // TestObjects_Refusals pins what Build refuses.
+// promise:pg-sequence-cache
 func TestObjects_Refusals(t *testing.T) {
 	for name, tc := range map[string]struct {
 		b    interface{ Build() (ddl.Script, error) }
@@ -193,6 +196,7 @@ func TestObjects_Refusals(t *testing.T) {
 // TestGuarded_CatchesTheConditionEachKindRaises pins the measured conditions:
 // a key constraint's second run raises duplicate_table, its index being a
 // relation; a check or foreign key raises duplicate_object.
+// promise:ddl-guarded-constraint
 func TestGuarded_CatchesTheConditionEachKindRaises(t *testing.T) {
 	for want, c := range map[string]pg.Constraint{
 		"WHEN duplicate_table ":  pg.Unique(pg.TableConstraint{Table: tSessUser.Table(), Name: "k"}, tSessUser),

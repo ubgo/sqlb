@@ -124,6 +124,7 @@ var keysDriftWant = []string{
 	"warning k_child: the database has a unique index on (n) the DDL does not create",
 }
 
+// promise:vet-key-columns
 func TestCheckTables_KeysAndDefaults_SQLite(t *testing.T) {
 	db := memorySQLite(t)
 	parent := sqlite.CreateTable(kParent).Column(ddl.Column(kParentID)).Clause(sqlite.PrimaryKey(kParentID))

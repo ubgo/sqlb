@@ -1,0 +1,4 @@
+type Dialect interface {
+	Placeholder(n int) string
+	QuoteIdent(ident string) string
+}

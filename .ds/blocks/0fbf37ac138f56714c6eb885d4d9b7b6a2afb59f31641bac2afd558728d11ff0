@@ -1,0 +1,2 @@
+on:   # ds:def id=manual-workflow-4epxh4zk
+  workflow_dispatch:

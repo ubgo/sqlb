@@ -12,7 +12,7 @@ import (
 	"github.com/ubgo/sqlb/sqlbtest"
 )
 
-// setupDDL is sqlbtest.Schema in SQLite's spelling. sqlb generates no DDL, so
+// setupDDL is sqlbtest.Schema in SQLite's spelling. the suite owns its fixture DDL, so
 // every integration writes this once, and the conformance suite binds to the
 // names it declares.
 var setupDDL = []string{
@@ -37,6 +37,7 @@ var teardownDDL = []string{
 }
 
 // TestConformance is the point of this module: the builder, executed.
+// promise:conformance-reset
 func TestConformance(t *testing.T) {
 	db, err := driversqlite.Memory()
 	if err != nil {
@@ -76,6 +77,8 @@ func TestConformance_FileBacked(t *testing.T) {
 
 // The pragmas must hold on every connection in the pool, which is the whole
 // reason they go in the DSN rather than through an Exec.
+// promise:sqlite-pragmas
+// ds:def id=sqlite-pragmas-d6qmetcs
 func TestPragmas_AppliedToEveryConnection(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "pragmas.db")
 	db, err := driversqlite.Open(path, driversqlite.WithMaxOpenConns(4))
@@ -160,6 +163,7 @@ func TestWithoutDefaultPragmas(t *testing.T) {
 }
 
 // A later WithPragma overrides a default of the same name and leaves the rest.
+// promise:sqlite-pragmas
 func TestWithPragma_Overrides(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "override.db")
 	db, err := driversqlite.Open(path, driversqlite.WithPragma("journal_mode", "DELETE"))

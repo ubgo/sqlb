@@ -130,6 +130,7 @@ func TestDynamic_DriverTypesAndNull(t *testing.T) {
 // Keeping one and dropping the other silently is the kind of wrong answer this
 // package refuses, so Maps fails and names the column, and Slices is the form
 // that loses nothing.
+// promise:scan-dynamic-duplicates
 func TestDynamic_DuplicateColumnIsAnError(t *testing.T) {
 	ctx := context.Background()
 	db, err := driversqlite.Memory()
@@ -179,6 +180,7 @@ func TestDynamic_DuplicateColumnIsAnError(t *testing.T) {
 // the next row, so a reader that kept the slice would corrupt every row but
 // the last, and only for blob columns. The copy is what makes multi-row blob
 // results correct.
+// promise:scan-fresh-rows
 func TestDynamic_BlobsAreCopied(t *testing.T) {
 	ctx := context.Background()
 	db, err := driversqlite.Memory()
@@ -225,6 +227,7 @@ func TestDynamic_BlobsAreCopied(t *testing.T) {
 // must copy. This does not, and the difference should be asserted rather than
 // assumed, because a caller who has met the other rule will expect this one to
 // behave the same way.
+// promise:scan-fresh-rows
 func TestDynamic_EachMapGivesAFreshRow(t *testing.T) {
 	ctx := context.Background()
 	db, err := driversqlite.Memory()
@@ -344,6 +347,7 @@ func TestDynamic_NoRows(t *testing.T) {
 // concurrently, and this asserts that under -race with every goroutine sharing
 // a single Query value. If a future change reintroduced shared state, this is
 // what would catch it.
+// promise:scan-concurrency
 func TestDynamic_SafeAcrossGoroutines(t *testing.T) {
 	ctx := context.Background()
 	db, err := driversqlite.Memory()

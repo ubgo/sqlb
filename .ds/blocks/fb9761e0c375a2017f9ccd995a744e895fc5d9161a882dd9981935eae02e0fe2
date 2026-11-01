@@ -1,0 +1,9 @@
+type Expr[T any] struct {
+	render func(a *render.Args) string
+
+	// table and name are set only for a column made by Col. They exist so a
+	// tool can list the columns a statement touches; they are not used by
+	// rendering.
+	table Table
+	name  string
+}

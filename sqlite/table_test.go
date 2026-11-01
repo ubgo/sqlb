@@ -205,6 +205,7 @@ PRAGMA foreign_keys = OFF`
 }
 
 // TestFTS5AndRebuild_Render pins the text of an FTS5 table and a rebuild.
+// promise:sqlite-rebuild
 func TestFTS5AndRebuild_Render(t *testing.T) {
 	fts := sqlb.Table{Name: "users_fts"}
 	ftsEmail := sqlb.Col[string](fts, "email")

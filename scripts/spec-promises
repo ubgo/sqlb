@@ -1,0 +1,298 @@
+#!/usr/bin/env python3
+"""spec-promises — make every absolute promise in a spec a tested one.
+
+A spec full of "never", "always" and "refuses" is a list of claims. None of
+them is checked unless a test names it, and nothing stops a new one being
+written without a test. This tool keeps a list of those sentences
+(promises.txt) and fails when the list and the spec, or the list and the
+tests, disagree.
+
+  promises.txt, one line per promise, tab-separated:
+      id <TAB> kind <TAB> quote
+  kind is `test` (a test must name it as `promise:<id>`) or `prose: <reason>`
+  (not a property of the software: advice, a non-goal, an example). quote is
+  a verbatim piece of the promise sentence. One id may carry several quotes
+  when the spec states one promise in several places. `# spec: <path>` lines
+  name the spec files; other `#` lines and blank lines are comments.
+
+Commands:
+  spec-promises scan  SPEC...                      every promise sentence, as file:line<TAB>sentence
+  spec-promises init  SPEC... --list FILE          write a starter list (refuses to overwrite)
+  spec-promises check --list FILE [--tests GLOB]   report every disagreement; exit 1 if any
+
+check fails when
+  - a spec sentence using a promise word contains none of the listed quotes
+    (a promise was added without being listed);
+  - a listed quote no longer appears verbatim in any spec file
+    (a promise was reworded or removed; update the list in the same change);
+  - a `test` promise is named by no test file as `promise:<id>`;
+  - a test names a `promise:<id>` the list does not have (a typo pins nothing).
+
+Promise words (--words overrides): never, always, refuse(s|d), must not,
+deterministic, hard error. Sentences inside fenced code are skipped. A line is
+taken to be a paragraph, bullet or table row, so the spec must not be
+hard-wrapped; a sentence broken across lines would be checked in pieces.
+
+Stdlib only (python 3.9+).
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import sys
+
+VERSION = "0.1.0"
+
+DEFAULT_WORDS = r"\b(never|always|refuses?|refused|must not|deterministic|hard error)\b"
+
+# Where tests live, across the usual ecosystems. --tests replaces the list.
+DEFAULT_TESTS = [
+    "**/*_test.go",
+    "**/*_test.py",
+    "**/test_*.py",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.test.js",
+    "**/*.spec.ts",
+    "**/*.spec.js",
+    "**/*_test.rs",
+    "**/tests/**",
+    "**/test/**",
+    "**/*Test.java",
+    "**/*_spec.rb",
+    "scripts/**/*.sh",
+    "test/**/*.sh",
+    "tests/**/*.sh",
+]
+
+# Directories never searched for tests: dependencies, build output, VCS.
+SKIP_DIRS = {".git", "node_modules", "vendor", "dist", "build", "target", ".venv", "venv", "__pycache__", "coverage"}
+
+KIND_TEST = "test"
+KIND_PROSE = "prose: "
+
+REF_RE = re.compile(r"promise:([a-z0-9][a-z0-9-]*)")
+SENTENCE_END_RE = re.compile(r"[.!?](\s+|$)")
+SPEC_LINE_RE = re.compile(r"^#\s*spec:\s*(\S.*?)\s*$")
+
+
+class ListError(Exception):
+    """A promises file that cannot be read as the format above."""
+
+
+def sentences(text: str, words: re.Pattern[str]) -> list[tuple[int, str]]:
+    """Every (line, sentence) outside fenced code that uses a promise word."""
+    out: list[tuple[int, str]] = []
+    fence = False
+    for n, line in enumerate(text.split("\n"), 1):
+        if line.strip().startswith("```"):
+            fence = not fence
+            continue
+        if fence:
+            continue
+        start = 0
+        ends = [m.end() for m in SENTENCE_END_RE.finditer(line)] + [len(line)]
+        for end in ends:
+            s = line[start:end].strip()
+            start = end
+            if s and words.search(s):
+                out.append((n, s))
+    return out
+
+
+def read_list(path: str) -> tuple[list[str], list[tuple[str, str, str, int]]]:
+    """Return (spec paths, [(id, kind, quote, line)])."""
+    specs: list[str] = []
+    rows: list[tuple[str, str, str, int]] = []
+    with open(path, encoding="utf-8") as f:
+        for n, raw in enumerate(f, 1):
+            line = raw.rstrip("\n")
+            m = SPEC_LINE_RE.match(line)
+            if m:
+                specs.append(m.group(1))
+                continue
+            if not line.strip() or line.startswith("#"):
+                continue
+            fields = line.split("\t")
+            if len(fields) != 3 or not fields[0] or not fields[2]:
+                raise ListError(f"{path}:{n}: want id<TAB>kind<TAB>quote, got {line!r}")
+            pid, kind, quote = fields
+            if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", pid):
+                raise ListError(f"{path}:{n}: id {pid!r} must be lowercase letters, digits and dashes")
+            if kind != KIND_TEST and not (kind.startswith(KIND_PROSE) and kind[len(KIND_PROSE):].strip()):
+                raise ListError(f"{path}:{n}: kind {kind!r} is neither {KIND_TEST!r} nor {KIND_PROSE!r} followed by a reason")
+            rows.append((pid, kind, quote, n))
+    return specs, rows
+
+
+def glob_re(pattern: str) -> re.Pattern[str]:
+    """Compile a glob where ** crosses directories and * does not."""
+    out = ""
+    i = 0
+    while i < len(pattern):
+        if pattern.startswith("**/", i):
+            out += "(?:.*/)?"
+            i += 3
+        elif pattern.startswith("**", i):
+            out += ".*"
+            i += 2
+        elif pattern[i] == "*":
+            out += "[^/]*"
+            i += 1
+        elif pattern[i] == "?":
+            out += "[^/]"
+            i += 1
+        else:
+            out += re.escape(pattern[i])
+            i += 1
+    return re.compile(out + r"\Z")
+
+
+def test_refs(root: str, patterns: list[str], exclude: set[str]) -> dict[str, list[str]]:
+    """Map each promise id named in a test file to the files naming it."""
+    compiled = [glob_re(p) for p in patterns]
+    refs: dict[str, list[str]] = {}
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        for name in sorted(filenames):
+            full = os.path.join(dirpath, name)
+            rel = os.path.relpath(full, root).replace(os.sep, "/")
+            if rel in exclude or not any(c.match(rel) for c in compiled):
+                continue
+            try:
+                with open(full, encoding="utf-8", errors="replace") as f:
+                    text = f.read()
+            except OSError:
+                continue
+            for pid in REF_RE.findall(text):
+                refs.setdefault(pid, []).append(rel)
+    return refs
+
+
+def cmd_scan(args: argparse.Namespace) -> int:
+    words = re.compile(args.words, re.I)
+    for spec in args.spec:
+        with open(spec, encoding="utf-8") as f:
+            for n, s in sentences(f.read(), words):
+                print(f"{spec}:{n}\t{s}")
+    return 0
+
+
+def cmd_init(args: argparse.Namespace) -> int:
+    if os.path.exists(args.list):
+        print(f"spec-promises: {args.list} exists; edit it, or delete it to start over", file=sys.stderr)
+        return 1
+    words = re.compile(args.words, re.I)
+    lines = [
+        "# Every absolute promise in the spec. `spec-promises check` fails on an",
+        "# unlisted promise sentence, a quote no longer in the spec, or a `test`",
+        "# promise no test names as promise:<id>.",
+        "#",
+        "# id <TAB> kind <TAB> quote. kind: `test`, or `prose: <reason>` for a sentence",
+        "# that is not a property of the software (advice, a non-goal, an example).",
+        "# Rename each todo-N id to what the promise is; merge ids that are one promise.",
+    ]
+    lines += [f"# spec: {s}" for s in args.spec]
+    lines.append("")
+    n = 0
+    for spec in args.spec:
+        with open(spec, encoding="utf-8") as f:
+            for _, s in sentences(f.read(), words):
+                n += 1
+                lines.append(f"todo-{n}\t{KIND_TEST}\t{s}")
+    os.makedirs(os.path.dirname(os.path.abspath(args.list)), exist_ok=True)
+    with open(args.list, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    print(f"wrote {args.list}: {n} promise sentence(s) to classify")
+    return 0
+
+
+def cmd_check(args: argparse.Namespace) -> int:
+    try:
+        specs, rows = read_list(args.list)
+    except (OSError, ListError) as e:
+        print(f"spec-promises: {e}", file=sys.stderr)
+        return 2
+    specs = args.spec or specs
+    if not specs:
+        print(f"spec-promises: no spec files: add `# spec: <path>` to {args.list} or pass --spec", file=sys.stderr)
+        return 2
+    if not rows:
+        # A list that read as empty would pass every check on nothing.
+        print(f"spec-promises: {args.list} lists no promises", file=sys.stderr)
+        return 2
+    words = re.compile(args.words, re.I)
+    texts: dict[str, str] = {}
+    for s in specs:
+        try:
+            with open(s, encoding="utf-8") as f:
+                texts[s] = f.read()
+        except OSError as e:
+            print(f"spec-promises: {e}", file=sys.stderr)
+            return 2
+
+    problems: list[str] = []
+    for pid, _, quote, n in rows:
+        if not any(quote in t for t in texts.values()):
+            problems.append(f"{args.list}:{n}: {pid}: quote no longer in the spec: {quote!r}")
+    for s, t in texts.items():
+        for n, sent in sentences(t, words):
+            if not any(q in sent for _, _, q, _ in rows):
+                problems.append(f"{s}:{n}: promise not in {args.list}: {sent!r}")
+
+    root = os.path.abspath(args.root)
+    exclude = {os.path.relpath(os.path.abspath(p), root).replace(os.sep, "/") for p in [args.list, *specs]}
+    refs = test_refs(root, args.tests or DEFAULT_TESTS, exclude)
+    ids = {pid for pid, _, _, _ in rows}
+    tested = sorted({pid for pid, kind, _, _ in rows if kind == KIND_TEST})
+    for pid in tested:
+        if pid not in refs:
+            problems.append(f"{args.list}: {pid}: no test names promise:{pid}")
+    for pid in sorted(refs):
+        if pid not in ids:
+            problems.append(f"{refs[pid][0]}: names promise:{pid}, which {args.list} does not list")
+
+    for p in problems:
+        print(p)
+    prose = len({pid for pid, kind, _, _ in rows if kind != KIND_TEST})
+    status = "ok" if not problems else f"{len(problems)} problem(s)"
+    print(f"spec-promises: {len(tested)} tested, {prose} prose, {len(rows)} quote(s): {status}", file=sys.stderr)
+    return 1 if problems else 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    p = argparse.ArgumentParser(prog="spec-promises", description=__doc__.split("\n\n")[0])
+    p.add_argument("--version", action="version", version=f"spec-promises {VERSION}")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("scan", help="print every promise sentence")
+    s.add_argument("spec", nargs="+")
+    s.add_argument("--words", default=DEFAULT_WORDS, help="regex of promise words (case-insensitive)")
+    s.set_defaults(fn=cmd_scan)
+
+    i = sub.add_parser("init", help="write a starter promises list")
+    i.add_argument("spec", nargs="+")
+    i.add_argument("--list", required=True)
+    i.add_argument("--words", default=DEFAULT_WORDS)
+    i.set_defaults(fn=cmd_init)
+
+    c = sub.add_parser("check", help="fail on any disagreement between spec, list and tests")
+    c.add_argument("--list", required=True)
+    c.add_argument("--spec", action="append", help="spec file (repeatable); default: the list's `# spec:` lines")
+    c.add_argument("--tests", action="append", help="glob of test files (repeatable); replaces the defaults")
+    c.add_argument("--root", default=".", help="directory test globs are relative to (default: .)")
+    c.add_argument("--words", default=DEFAULT_WORDS)
+    c.set_defaults(fn=cmd_check)
+
+    args = p.parse_args(argv)
+    try:
+        return args.fn(args)
+    except OSError as e:
+        print(f"spec-promises: {e}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

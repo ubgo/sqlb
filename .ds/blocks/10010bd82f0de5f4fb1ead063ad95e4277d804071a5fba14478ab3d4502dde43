@@ -1,0 +1,22 @@
+func writeReturning(b *strings.Builder, args *Args, bs []Binding, aliased bool) {
+	if len(bs) == 0 {
+		return
+	}
+	if r, ok := args.Dialect().(Returning); !ok || !r.SupportsReturning() {
+		args.Fail(ErrNoReturning)
+		return
+	}
+	b.WriteString(sepSpace)
+	b.WriteString(kwReturning)
+	b.WriteString(sepSpace)
+	for j, bind := range bs {
+		if j > 0 {
+			b.WriteString(sepComma)
+		}
+		if n := bind.ColumnName(); n != "" && !aliased {
+			b.WriteString(args.Dialect().QuoteIdent(n))
+		} else {
+			b.WriteString(bind.SQL(args))
+		}
+	}
+}

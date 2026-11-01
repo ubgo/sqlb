@@ -18,9 +18,10 @@ import sys
 
 # Directories that are never checked. docsi/ is a symlink into a private
 # repository rendered by a different tool with its own component grammar;
+# .lore/ contains machine-generated context and JSON records, not authored docs.
 # testdata/ holds upstream documents copied verbatim, where reflowing the
 # prose would destroy the thing under test.
-SKIP_DIRS = {".git", "docsi", "testdata", "node_modules"}
+SKIP_DIRS = {".git", "docsi", "testdata", "node_modules", ".lore"}
 
 # A fenced code block opens and closes with these. Line breaks inside one are
 # semantic, so every rule below is suspended until the fence closes.
@@ -128,6 +129,10 @@ def check_file(root: str, rel: str, problems: list[str]) -> None:
         for target in LINK.findall(CODE_SPAN.sub("", line)):
             target = target.split(" ")[0].strip()
             if target.startswith(("http://", "https://", "mailto:")):
+                continue
+            # Docsync owns this URI scheme and validates the id, verb and
+            # reference freshness in the separate mandatory docsync:check.
+            if target.startswith("ds:"):
                 continue
             file_part, _, anchor = target.partition("#")
             if file_part:

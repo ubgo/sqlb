@@ -57,6 +57,7 @@ func (Dialect) SupportsUnrestrictedAddColumn() bool { return true }
 // (type Age int64) is cast like int64. A nil pointer and every non-integer
 // value are left alone: a NULL has no type to give, and a float or a string
 // was measured not to widen.
+// ds:def id=mysql-numbers-zxvc6pdk
 func (Dialect) NumericParam(placeholder string, v any) string {
 	rv := reflect.ValueOf(v)
 	for rv.Kind() == reflect.Pointer {

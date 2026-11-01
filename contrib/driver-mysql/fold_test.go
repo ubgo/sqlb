@@ -56,6 +56,7 @@ func collIDs(t *testing.T, db *sql.DB, p sqlb.Predicate) []int64 {
 	return out
 }
 
+// ds:def id=mysql-collation-vqcp6ms3
 func TestDefaultCollation_EqIgnoresCaseAndAccents(t *testing.T) {
 	db := openOrSkip(t)
 	collationTable(t, db)

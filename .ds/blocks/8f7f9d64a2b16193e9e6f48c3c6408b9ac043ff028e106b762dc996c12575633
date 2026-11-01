@@ -1,0 +1,11 @@
+  check:   # ds:def id=gate-9g2wphfm
+    desc: The gate - every module formatted, vetted and tested, plus the core's own gates
+    cmds:
+      - task: check:modules
+      - task: typecheck
+      - task: zerodep
+      - task: reuse:check
+      - task: tasks:check
+      - task: docs:check
+      - task: promises:check
+      - task: docsync:check

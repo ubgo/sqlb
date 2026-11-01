@@ -90,6 +90,7 @@ func (t Table) qualified(d render.Dialect) string {
 // The render function receives *Args rather than only the Dialect so an
 // expression can bind a parameter (see Param) and can record that it is not
 // supported by the dialect it is being rendered through (see Args.Unsupported).
+// ds:def id=typed-expression-bpqvb4a9
 type Expr[T any] struct {
 	render func(a *render.Args) string
 
@@ -132,6 +133,7 @@ func (e Expr[T]) Name() string { return e.name }
 func (e Expr[T]) Table() Table { return e.table }
 
 // Col declares a column of table t with Go type T. It renders "alias.name".
+// ds:def id=column-declaration-gthk6bb2
 func Col[T any](t Table, name string) Expr[T] {
 	return Expr[T]{
 		render: func(a *render.Args) string {
@@ -187,6 +189,7 @@ func Literal[T any](sql string) Expr[T] {
 // The same physical column is non-null under an INNER join and nullable under
 // a LEFT join. Discovered when an integration test failed with "couldn't
 // convert <nil> into type time.Time", a failure no test over SQL text catches.
+// ds:def id=column-and-null-p2fy3sp5
 func Nullable[T any](e Expr[T]) Expr[*T] {
 	return Expr[*T](e)
 }

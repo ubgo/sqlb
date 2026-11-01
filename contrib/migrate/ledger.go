@@ -320,6 +320,7 @@ func unknown(recorded []AppliedMigration, ms []Migration) []string {
 // On SQLite every transaction begins IMMEDIATE, so two deploys on one file
 // wait for each other instead of one failing with SQLITE_BUSY; see
 // ledger_sqlite.go for the two refusals that used to escape.
+// ds:def id=migration-ledger-h5dv2yvb
 func (l Ledger) Apply(ctx context.Context, conn *sql.Conn, ms ...Migration) (applied []string, err error) {
 	seen := map[[2]string]bool{}
 	for _, m := range ms {

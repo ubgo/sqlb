@@ -1,0 +1,10 @@
+{
+  "_table": "projects",
+  "_v": 1,
+  "archived_at": null,
+  "created_at": "2026-11-01T17:23:36.300210000Z",
+  "id": "prj_01a198235aec7338a4c679214eeabefb",
+  "name": "sqlb",
+  "origin_url": "https://github.com/ubgo/sqlb.git",
+  "updated_at": "2026-11-01T17:23:36.300210000Z"
+}

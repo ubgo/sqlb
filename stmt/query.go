@@ -73,6 +73,7 @@ func NewGuard() Guard { return Guard{g: &execGuard{}} }
 // NewGuardedQuery is NewQuery for a builder that owns a Guard: every Query it
 // returns for the same guard is detected as sharing targets with the others,
 // so ErrQueryInUse fires when two of them overlap.
+// ds:def id=query-ownership-vsv882ny
 func NewGuardedQuery(g Guard, sql string, args, targets []any) Query {
 	return newQueryWith(g.g, sql, args, targets)
 }

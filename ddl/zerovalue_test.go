@@ -11,6 +11,8 @@ import (
 
 // TestZeroValues_AreRefused builds the zero value of every exported ddl type
 // and fails on a panic or a clean build; see sqlbtest.ZeroValues.
+// promise:mysql-incomplete
+// promise:zero-values
 func TestZeroValues_AreRefused(t *testing.T) {
 	d := postgres.Dialect{}
 	sqlbtest.ZeroValues(t, sqlbtest.ZeroConfig{

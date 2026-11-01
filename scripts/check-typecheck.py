@@ -26,6 +26,7 @@ DELIBERATE = re.compile(r"^\s*(_|_, _)\s*=\s*.+//\s*\S")
 ERROR = re.compile(r"bad\.go:(\d+):\d+: ")
 
 
+# promise:typed-clauses
 def main():
     with open(FILE, encoding="utf-8") as fh:
         lines = fh.read().split("\n")

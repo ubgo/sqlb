@@ -69,6 +69,7 @@ func TestZeroValues_PassesAClassifiedPackage(t *testing.T) {
 
 // TestZeroValues_ReportsEachWayAZeroValueGoesWrong pins every finding the
 // runner makes, one broken configuration at a time.
+// promise:zero-values
 func TestZeroValues_ReportsEachWayAZeroValueGoesWrong(t *testing.T) {
 	cases := map[string]struct {
 		edit func(*sqlbtest.ZeroConfig)

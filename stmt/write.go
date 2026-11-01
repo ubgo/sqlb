@@ -693,6 +693,7 @@ var ErrNoReturning = errors.New("sqlb: dialect has no RETURNING; use the two-sta
 // writeReturning renders RETURNING. aliased says whether the statement
 // rendered its table with an alias; INSERT does not, so its RETURNING uses
 // bare column names.
+// ds:def id=returning-refusal-uxpx3yu9
 func writeReturning(b *strings.Builder, args *Args, bs []Binding, aliased bool) {
 	if len(bs) == 0 {
 		return

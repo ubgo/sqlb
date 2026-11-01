@@ -59,6 +59,7 @@ func readPragma(t *testing.T, db *sql.DB, name string) string {
 // stored in the database file and can only be changed for free while it has no
 // pages; afterwards they need a VACUUM, which is why their statements are
 // marked OutsideTransaction.
+// promise:sqlite-user-version
 func TestPragma_SetsWhatItSaysOnSQLite(t *testing.T) {
 	ctx := context.Background()
 	db := pragmaDB(t)
@@ -320,6 +321,7 @@ func TestPragma_ChecksFailOnlyWhenSomethingIsWrong(t *testing.T) {
 // wrapping integrity_check and quick_check in a SELECT: the bare pragma
 // returns the single row 'ok' on a healthy database, so MustReturnNoRows over
 // it would fail every healthy database.
+// promise:sqlite-integrity
 func TestPragma_IntegrityChecksReturnOkWhenSound(t *testing.T) {
 	ctx := context.Background()
 	db := pragmaDB(t)

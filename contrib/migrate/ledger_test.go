@@ -146,6 +146,7 @@ func sqliteFile(t *testing.T) *sql.DB {
 
 // TestLedger_SQLite runs the suite on a SQLite file with a pool, where the
 // lock is a lock row.
+// promise:migration-ledger
 func TestLedger_SQLite(t *testing.T) {
 	ledgerSuite(t, sqlb.SQLiteDialect{}, sqliteFile, "lg")
 }
@@ -164,6 +165,7 @@ func openEnv(t *testing.T, driver, env string) *sql.DB {
 }
 
 // TestLedger_Postgres runs the suite on Postgres, with its advisory lock.
+// promise:migration-ledger
 func TestLedger_Postgres(t *testing.T) {
 	open := func(t *testing.T) *sql.DB { return openEnv(t, "pgx", "SQLB_PG_DSN") }
 	db := open(t)
@@ -173,6 +175,7 @@ func TestLedger_Postgres(t *testing.T) {
 }
 
 // TestLedger_MySQL runs the suite on MySQL, with its named lock.
+// promise:migration-ledger
 func TestLedger_MySQL(t *testing.T) {
 	open := func(t *testing.T) *sql.DB { return openEnv(t, "mysql", "SQLB_MYSQL_DSN") }
 	db := open(t)
@@ -241,6 +244,7 @@ func TestLedger_Refusals(t *testing.T) {
 // TestTableLock_WaitsTimesOutAndTakesOverAStaleRow pins the lock row: a
 // second holder waits, gives up with ErrLocked at its deadline, and takes
 // over a row older than StaleAfter, a crashed holder's.
+// promise:migration-lock
 func TestTableLock_WaitsTimesOutAndTakesOverAStaleRow(t *testing.T) {
 	ctx := context.Background()
 	db := sqliteFile(t)
@@ -405,6 +409,7 @@ func TestApplied_OrdersByTimeThenOwnerThenName(t *testing.T) {
 // TestApplied_Refusals pins what Applied reports rather than hides: a zero
 // Ledger, an applied_at the ledger could not have written, and a failure
 // that is not a missing table, which must not read as "none applied".
+// promise:migration-ledger
 func TestApplied_Refusals(t *testing.T) {
 	ctx := context.Background()
 	db := sqliteFile(t)

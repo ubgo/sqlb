@@ -178,7 +178,7 @@ The struct tag this package reads is `structbind.TagKey`, which is `"db"` — th
 
 This is stated plainly because it is the whole trade.
 
-Column names come from struct tags or from a `Namer`, so **a typo in a tag, or a convention that does not match the schema, is a runtime error** where a typo in an `expr.Col` declaration is a compile error. And the Go type of a field is **never checked** against the column's: a `string` field mapped to an integer column builds a perfectly good statement and fails at the scan.
+Column names come from struct tags or from a `Namer`, so **a typo in a tag, or a convention that does not match the schema, is a runtime error** where a typo in an `expr.Col` declaration is a compile error. And the Go type of a field is **never checked** against the column's: a field mapped to a differently typed database column builds without consulting the database. `database/sql` converts compatible values (including integers into strings) and reports incompatible conversions at the scan.
 
 That is exactly the checking `sqlb` exists to provide, and this package gives it up in exchange for not writing the list.
 

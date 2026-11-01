@@ -106,6 +106,7 @@ func TestTable_EveryClosedSetValueRenders(t *testing.T) {
 }
 
 // TestTable_Refusals pins what Build refuses, each before any SQL exists.
+// promise:ddl-generated-default
 func TestTable_Refusals(t *testing.T) {
 	for _, tc := range []struct {
 		name  string

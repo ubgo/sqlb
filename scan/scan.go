@@ -5,9 +5,9 @@
 // two differ in exactly one way that matters. A Binding captures a pointer to a
 // caller variable when the query is built, so the query aliases caller memory
 // and two goroutines executing it interleave each other's rows. A Reader
-// captures no memory at all: it allocates fresh destinations for every row and
-// hands back a value, so one Reader is safe to share across any number of
-// concurrent executions.
+// built from Field allocates fresh destinations for every row and hands back
+// a value. Sharing a Reader also requires custom allocators and mapping
+// callbacks to be concurrency-safe.
 //
 // The cost is that a Reader has to be composed rather than declared inline. The
 // composition is pairwise, which is the whole trick: Map2 combines two Readers
@@ -47,8 +47,8 @@ var ErrNoColumns = errors.New("sqlb/scan: reader selects no columns")
 // The invariant that makes it safe to share: alloc is called once per row and
 // returns freshly allocated destinations together with a closure that reads
 // them. Nothing is retained between rows and nothing is shared between
-// executions, so the zero-value Reader is the only unusable one and every
-// constructed Reader is safe for concurrent use.
+// executions. Custom allocators and mapping callbacks must preserve this
+// contract; construction alone cannot enforce it.
 type Reader[T any] struct {
 	cols  []render.SQLer
 	alloc func() (dests []any, value func() T)
@@ -95,6 +95,7 @@ func Field[T any](e expr.Expr[T]) Reader[T] {
 //
 // The columns are what All and One append to the statement's select list, in
 // scan order, so they must correspond one to one with the destinations.
+// ds:def id=reader-allocation-nktfvyeg
 func New[T any](cols []render.SQLer, alloc func() (dests []any, value func() T)) Reader[T] {
 	return Reader[T]{cols: cols, alloc: alloc}
 }
@@ -118,6 +119,7 @@ func Map[A, B any](a Reader[A], f func(A) B) Reader[B] {
 // arity is unbounded without a generated family of Map3, Map4 and so on. Go
 // generics cannot express a variadic type list, and this is the standard answer
 // to that, not a workaround for it.
+// ds:def id=reader-composition-ymehc5ss
 func Map2[A, B, C any](a Reader[A], b Reader[B], f func(A, B) C) Reader[C] {
 	cols := make([]render.SQLer, 0, len(a.cols)+len(b.cols))
 	cols = append(cols, a.cols...)
@@ -155,9 +157,10 @@ func Map2[A, B, C any](a Reader[A], b Reader[B], f func(A, B) C) Reader[C] {
 // select list is the one the engine sees. Where the width itself means
 // something — the branches of a set operation must agree — stmt.Build refuses
 // the mismatch with ErrSetOpArity rather than letting the engine report it
-// against columns the caller never typed. Where it does not, the extra columns
-// are selected and never scanned, except under Distinct, which counts them
-// when deciding what is a duplicate.
+// against columns the caller never typed. Otherwise database/sql Scan rejects
+// the extra result columns because the reader allocates destinations only for
+// its own columns. Pass a statement without an existing projection to All or
+// One; include the desired fields in the Reader instead.
 //
 // s is cloned by Exprs, which derives rather than writing to its receiver, so
 // a caller holding the statement is unaffected.
@@ -177,6 +180,7 @@ func build[T any, D render.Dialect](s *stmt.Select[D], r Reader[T]) (stmt.Query,
 // r's columns are appended to s's own select list rather than replacing it;
 // see build for what that means where the width of a select list carries
 // meaning of its own.
+// ds:def id=reader-flow-xcq2taqt
 func All[T any, D render.Dialect](ctx context.Context, db exec.DBTX, s *stmt.Select[D], r Reader[T]) ([]T, error) {
 	q, err := build(s, r)
 	if err != nil {
@@ -202,7 +206,7 @@ func All[T any, D render.Dialect](ctx context.Context, db exec.DBTX, s *stmt.Sel
 	return out, nil
 }
 
-// One runs s and returns the single row it matched.
+// One runs s and returns the first row it matched, without checking uniqueness.
 //
 // r's columns are appended to s's own select list rather than replacing it;
 // see build for what that means where the width of a select list carries

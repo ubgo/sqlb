@@ -1,0 +1,28 @@
+func Each(ctx context.Context, db DBTX, q stmt.Query, fn func() error) error {
+	if q.Targets == nil {
+		return stmt.ErrNoTargets
+	}
+	// Same reason as One. This also catches a callback that re-executes the
+	// query it is iterating, which would overwrite the targets mid-loop.
+	if !q.Acquire() {
+		return stmt.ErrQueryInUse
+	}
+	defer q.Release()
+	rows, err := db.QueryContext(ctx, q.SQL, q.Args...)
+	if err != nil {
+		return fmt.Errorf("sqlb: query: %w", err)
+	}
+	// Dropped for the same reason as in One: rows.Err() carries anything the
+	// caller can act on.
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		if err := rows.Scan(q.Targets...); err != nil {
+			return fmt.Errorf("sqlb: scan: %w", err)
+		}
+		if err := fn(); err != nil {
+			return err
+		}
+	}
+	return rows.Err()
+}

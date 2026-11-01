@@ -44,6 +44,7 @@ func renderPred(p expr.Predicate) (string, error) {
 }
 
 // TestShape_ExprDoorsRefuseAHostileValue pins the first half.
+// promise:operator-shape
 func TestShape_ExprDoorsRefuseAHostileValue(t *testing.T) {
 	cases := map[string]func() (string, error){
 		"Binary": func() (string, error) {
@@ -76,6 +77,7 @@ func TestShape_ExprDoorsRefuseAHostileValue(t *testing.T) {
 // against the layer's own constant list rather than a sample: OpValues is what
 // the builder writes from, so a constant added to it is covered here the day
 // it lands.
+// promise:operator-shape
 func TestShape_ExprDoorsTakeEveryRealOperator(t *testing.T) {
 	for _, op := range expr.OpValues {
 		if _, err := renderPred(expr.Compare(shpID, op, shpID)); err != nil {
