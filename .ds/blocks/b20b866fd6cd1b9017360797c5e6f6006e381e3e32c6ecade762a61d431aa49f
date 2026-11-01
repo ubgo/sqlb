@@ -1,0 +1,15 @@
+func TestScan_OneAndBoundOneHaveDifferentCardinality(t *testing.T) {
+	db := seeded(t, "")
+	got, err := scan.One(context.Background(), db, byAge(), personReader)
+	if err != nil || got != (person{"ada@x.com", 36}) {
+		t.Fatalf("first row: got %v, err %v", got, err)
+	}
+	var email string
+	q, err := byAge().Columns(bind.Bind(personEmail, &email)).Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := exec.One(context.Background(), db, q); !errors.Is(err, exec.ErrMultipleRows) {
+		t.Fatalf("bound One: want ErrMultipleRows, got %v", err)
+	}
+}

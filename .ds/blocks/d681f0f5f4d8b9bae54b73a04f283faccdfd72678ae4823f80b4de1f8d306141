@@ -1,0 +1,28 @@
+func TestScan_OneReaderIsSafeToShare(t *testing.T) {
+	db := seeded(t, "file:sharedreader?mode=memory&cache=shared")
+	ctx := context.Background()
+
+	const goroutines = 64
+	var wg sync.WaitGroup
+	errs := make(chan error, goroutines)
+
+	for range goroutines {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			got, err := scan.All(ctx, db, byAge(), personReader)
+			if err != nil {
+				errs <- err
+				return
+			}
+			if want := `[{ada@x.com 36} {bob@x.com 41}]`; fmt.Sprint(got) != want {
+				errs <- fmt.Errorf("got %v, want %s", got, want)
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Fatalf("a shared Reader produced a wrong or failed read: %v", err)
+	}
+}

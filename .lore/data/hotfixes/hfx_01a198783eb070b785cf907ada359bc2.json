@@ -1,0 +1,20 @@
+{
+  "_table": "hotfixes",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Use the SQLite wrapper's DSN pragma handling so settings reach new pooled connections, rather than applying a one-off PRAGMA to an arbitrary connection. Memory defaults to one connection because separate :memory: connections see separate databases. Do not override that pool size without changing the database-sharing design; Open itself does not ping, so first-use errors still need handling.\n\nEvidence: ds:block?id=sqlite-pragmas-d6qmetcs; ds:block?id=sqlite-open-jda68c72; ds:block?id=sqlite-memory-kyedhky9. See docs/architecture.md and docs/operating-notes.md. Verified from the implementation and tests on 2026-11-01; server-test gates are explicitly distinguished from execution.",
+  "confidence": null,
+  "created_at": "2026-11-01T18:56:19.632046000Z",
+  "created_by_actor_id": "act_44e6f0f93d1174d1b1ad4c8d46b37885",
+  "id": "hfx_01a198783eb070b785cf907ada359bc2",
+  "last_validated_at": null,
+  "project_id": "prj_01a198235aec7338a4c679214eeabefb",
+  "repo_id": "rep_814705e241747bc4a7ef20b6d32f7fd7",
+  "severity": "medium",
+  "source_kind": "manual",
+  "source_ref": null,
+  "superseded_by_id": null,
+  "title": "SQLite pragmas belong to connections",
+  "trust_score": 0.5,
+  "updated_at": "2026-11-01T18:56:19.632047000Z"
+}

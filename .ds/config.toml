@@ -3,7 +3,7 @@ prefix = "ds"
 
 [scan]
 code = ["**"]
-docs = ["docs/**", "**/README.md", "README.md", "SECURITY.md"]
+docs = ["docs/**", "**/README.md", "README.md", "SECURITY.md", "COMMANDS.md", "CHANGELOG.md"]
 exclude = ["**/testdata/**", "**/node_modules/**", "**/vendor/**", "dist/**", "public/**", ".lore/**", ".claude/**", ".agents/**", ".ds/**"]
 generated = ["**/*.pb.go", "**/gen/**", "**/*_gen.go", "**/*_gen.ts"]
 

@@ -1,0 +1,27 @@
+func caseNullScan(t *testing.T, c Config) {
+	// The NULL is written explicitly rather than through SetDefault, because
+	// DEFAULT inside a VALUES list is not portable: Postgres has it, SQLite
+	// does not. What this case is about is the read path.
+	exec(t, c, sqlb.NewInsert(c.Dialect).Into(Users).Row(
+		sqlb.Set(UserID, int64(1)),
+		sqlb.Set(UserEmail, "a@example.com"),
+		sqlb.Set(sqlb.Nullable(UserName), (*string)(nil)),
+		sqlb.Set(UserAge, int64(36)),
+		sqlb.Set(UserActive, true),
+	))
+
+	var name *string
+	var email string
+	sel := sqlb.NewSelect(c.Dialect).
+		Columns(sqlb.Bind(sqlb.Nullable(UserName), &name), sqlb.Bind(UserEmail, &email)).
+		From(Users).Where(sqlb.Eq(UserID, int64(1)))
+	if err := one(t, c, sel); err != nil {
+		t.Fatalf("One: %v", err)
+	}
+	if name != nil {
+		t.Fatalf("want nil for a NULL column, got %q", *name)
+	}
+	if email != "a@example.com" {
+		t.Fatalf("the non-null column beside it: got %q", email)
+	}
+}

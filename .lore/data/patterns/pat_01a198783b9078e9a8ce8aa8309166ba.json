@@ -1,0 +1,20 @@
+{
+  "_table": "patterns",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Put common expression/statement mechanisms in core layers and engine syntax in pg/mysql/sqlite/ch. Use dialect capabilities and engine guards, then test wrong-dialect refusal as well as the intended SQL. This catches a query built for the wrong engine before it reaches the server; it does not detect server-version or extension availability.\n\nEvidence: ds:block?id=dialect-contract-smkbmeyz; ds:block?id=dialect-failure-zqdgvzs3; ds:block?id=postgres-arrays-5w7ytu86; ds:block?id=postgres-extensions-j5kc5mqu. See docs/architecture.md and docs/operating-notes.md. Verified from the implementation and tests on 2026-11-01; server-test gates are explicitly distinguished from execution.",
+  "confidence": null,
+  "created_at": "2026-11-01T18:56:18.832583000Z",
+  "created_by_actor_id": "act_44e6f0f93d1174d1b1ad4c8d46b37885",
+  "id": "pat_01a198783b9078e9a8ce8aa8309166ba",
+  "language": null,
+  "last_validated_at": null,
+  "project_id": "prj_01a198235aec7338a4c679214eeabefb",
+  "repo_id": "rep_814705e241747bc4a7ef20b6d32f7fd7",
+  "source_kind": "manual",
+  "source_ref": null,
+  "superseded_by_id": null,
+  "title": "Keep portable mechanisms and guarded engine syntax separate",
+  "trust_score": 0.5,
+  "updated_at": "2026-11-01T18:56:18.832583000Z"
+}

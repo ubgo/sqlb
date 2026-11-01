@@ -1,0 +1,20 @@
+func TestDefaultCollation_EqIgnoresCaseAndAccents(t *testing.T) {
+	db := openOrSkip(t)
+	collationTable(t, db)
+	for _, tc := range []struct {
+		name string
+		p    sqlb.Predicate
+		want []int64
+	}{
+		{"default collation: Eq ignores case", sqlb.Eq(collAI, "ada@x"), []int64{1}},
+		{"default collation: Eq ignores accents", sqlb.Eq(collAI, "cafe"), []int64{2}},
+		{"default collation: Contains ignores case", sqlb.Contains(collAI, "ADA"), []int64{1}},
+		{"utf8mb4_bin: Eq is exact", sqlb.Eq(collBin, "ada@x"), []int64{}},
+		{"utf8mb4_bin: Eq keeps accents", sqlb.Eq(collBin, "cafe"), []int64{}},
+		{"utf8mb4_bin: Contains is exact", sqlb.Contains(collBin, "ADA"), []int64{}},
+	} {
+		if got := collIDs(t, db, tc.p); !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s: %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}

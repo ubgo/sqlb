@@ -65,6 +65,7 @@ var ErrMultipleRows = errors.New("sqlb: query matched multiple rows but expected
 // which are pointers into the caller's variables.
 // Build the query where its destination lives, per call. Reusing one
 // sequentially is fine.
+// ds:def id=bound-one-x39s9kka
 func One(ctx context.Context, db DBTX, q stmt.Query) error {
 	if q.Targets == nil {
 		return stmt.ErrNoTargets
@@ -125,6 +126,7 @@ func One(ctx context.Context, db DBTX, q stmt.Query) error {
 // stmt.ErrQueryInUse when the same statement is already executing, including from
 // inside fn. q is not safe for concurrent use; running one from two
 // goroutines is a data race. See One.
+// ds:def id=bound-each-qvvzm6tq
 func Each(ctx context.Context, db DBTX, q stmt.Query, fn func() error) error {
 	if q.Targets == nil {
 		return stmt.ErrNoTargets

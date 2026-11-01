@@ -110,6 +110,7 @@ func WithMaxOpenConns(n int) Option {
 // Open does not ping. A SQLite file is created on first use, so a failure to
 // open is a permissions or path problem the first statement reports with more
 // context than a ping would.
+// ds:def id=sqlite-open-jda68c72
 func Open(dsn string, opts ...Option) (*sql.DB, error) {
 	cfg := config{useDefaults: true, maxOpen: -1}
 	for _, o := range opts {
@@ -134,6 +135,7 @@ func Open(dsn string, opts ...Option) (*sql.DB, error) {
 // never the place to debug it.
 //
 // The database exists until the returned *sql.DB is closed.
+// ds:def id=sqlite-memory-kyedhky9
 func Memory(opts ...Option) (*sql.DB, error) {
 	all := append([]Option{WithMaxOpenConns(1)}, opts...)
 	return Open(":memory:", all...)

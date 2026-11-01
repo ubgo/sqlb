@@ -1,0 +1,23 @@
+func TestSet_OrdersTablesFromPackagesThatDoNotKnowEachOther(t *testing.T) {
+	set, err := schema.New("ubgo/auth", authTables()...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := set.Add("the application", appTables()...); err != nil {
+		t.Fatal(err)
+	}
+
+	sorted, err := set.Sorted()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var got []string
+	for _, tbl := range sorted {
+		got = append(got, tbl.Name)
+	}
+	want := "auth_user invoice invoice_line"
+	if strings.Join(got, " ") != want {
+		t.Fatalf("got  %v\nwant %s", got, want)
+	}
+}

@@ -372,6 +372,7 @@ type Query struct {
 
 // Build renders the statement. Every check fails closed; the builder spec
 // lists the order.
+// ds:def id=select-build-h68d49p3
 func (s *Select[D]) Build() (Query, error) {
 	args := NewArgs(s.dialect)
 	var b strings.Builder

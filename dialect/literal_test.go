@@ -104,6 +104,7 @@ func TestQuoteLiteral_SQLite(t *testing.T) {
 // TestQuoteLiteral_MySQL pins MySQL's rule: quotes doubled, a backslash
 // refused, bytes and times in forms that read the same under every sql_mode.
 // promise:mysql-backslash
+// ds:def id=mysql-literals-23295m4b
 func TestQuoteLiteral_MySQL(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -143,6 +144,7 @@ func TestQuoteLiteral_MySQL(t *testing.T) {
 // differently from what was written.
 // promise:literal-refusal
 // promise:sqlite-time-default
+// ds:def id=literal-refusals-3xx754he
 func TestQuoteLiteral_RefusesWhatItCannotWriteFaithfully(t *testing.T) {
 	quoters := map[string]render.LiteralQuoting{"postgres": postgres.Dialect{}, "sqlite": sqlite.Dialect{}, "mysql": mysql.Dialect{}}
 	refused := map[string]any{

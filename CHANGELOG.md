@@ -1,6 +1,19 @@
+---
+ds:
+  covers: [manual-workflow-4epxh4zk]
+---
+
 # Changelog
 
 All notable changes to `github.com/ubgo/sqlb` are documented here. The format follows Keep a Changelog, and versioning is SemVer with the pre-GA convention that `v0.x` may break.
+
+## Unreleased
+
+- Capture SQLB purpose, architecture, result ownership, dialect differences and testing boundaries in shared Lore: 8 memories, 4 architecture notes, 8 patterns and 10 operational lessons.
+- Add [architecture](docs/architecture.md) and [operating notes](docs/operating-notes.md) with stable Docsync references, checked by `task check`.
+- Correct outdated MySQL support, migration execution, PostgreSQL array version and reader projection documentation; remove duplicated stale symbol counts.
+- Add executable regressions for reader cardinality and projection width, and extend dialect assertions to MySQL and RETURNING capabilities. Runtime behavior is unchanged.
+- Keep GitHub Actions triggered by manual dispatch ([test workflow](ds:block?id=manual-workflow-4epxh4zk)).
 
 ## [0.1.1] - 2026-10-11
 

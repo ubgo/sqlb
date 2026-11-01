@@ -1,0 +1,12 @@
+{
+  "_table": "architecture_notes",
+  "_v": 1,
+  "body": "A bound Query contains addresses into caller state. Builder-derived queries share an execution guard so overlapping executions fail rather than write through those addresses together; independently constructed queries can still point at the same variables, so callers must preserve ownership. Custom builders should propagate NewGuardedQuery guards, not rely on a Query struct literal. Reader composition builds per-row allocators instead, allowing reuse when custom allocators and callbacks are concurrency-safe. Neither mechanism synchronizes arbitrary caller access to destination variables.\n\nEvidence: ds:block?id=query-ownership-vsv882ny; ds:block?id=query-overlap-5hddx8sm; ds:block?id=reader-allocation-nktfvyeg; ds:block?id=reader-sharing-79k4pyx5. See docs/architecture.md and docs/operating-notes.md. Verified from the implementation and tests on 2026-11-01; server-test gates are explicitly distinguished from execution.",
+  "created_at": "2026-11-01T18:56:18.567118000Z",
+  "created_by_actor_id": "act_44e6f0f93d1174d1b1ad4c8d46b37885",
+  "id": "anr_01a198783a8771d0bef937f0b4b0f7eb",
+  "project_id": "prj_01a198235aec7338a4c679214eeabefb",
+  "repo_id": "rep_814705e241747bc4a7ef20b6d32f7fd7",
+  "title": "Result lifetime and concurrency boundary",
+  "updated_at": "2026-11-01T18:56:18.567118000Z"
+}

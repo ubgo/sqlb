@@ -1,6 +1,6 @@
 # pgsurface
 
-The Postgres surface, area by area. `pg` is by far the largest package in the module — around five hundred exported names to the core's two hundred and sixty — and this is where that surface is exercised as code rather than listed as a table.
+The Postgres surface, area by area. `pg` is by far the largest package in the module — see the generated package reference for its current surface — and this is where that surface is exercised as code rather than listed as a table.
 
 ## The files
 

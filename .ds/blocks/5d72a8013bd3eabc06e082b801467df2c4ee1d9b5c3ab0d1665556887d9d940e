@@ -1,0 +1,25 @@
+func TestQuoteLiteral_RefusesWhatItCannotWriteFaithfully(t *testing.T) {
+	quoters := map[string]render.LiteralQuoting{"postgres": postgres.Dialect{}, "sqlite": sqlite.Dialect{}, "mysql": mysql.Dialect{}}
+	refused := map[string]any{
+		"a string holding NUL": "a\x00b",
+		"NaN":                  math.NaN(),
+		"infinity":             math.Inf(1),
+		"a struct":             struct{}{},
+		"a map":                map[string]int{},
+		"a slice of strings":   []string{"a"},
+	}
+	for engine, q := range quoters {
+		for name, v := range refused {
+			t.Run(engine+"/"+name, func(t *testing.T) {
+				if _, err := q.QuoteLiteral(v); !errors.Is(err, render.ErrNotInlinable) {
+					t.Fatalf("got %v, want ErrNotInlinable", err)
+				}
+			})
+		}
+	}
+	t.Run("sqlite declines time.Time", func(t *testing.T) {
+		if _, err := (sqlite.Dialect{}).QuoteLiteral(time.Now()); !errors.Is(err, render.ErrNotInlinable) {
+			t.Fatalf("got %v, want ErrNotInlinable: SQLite has no faithful time spelling", err)
+		}
+	})
+}

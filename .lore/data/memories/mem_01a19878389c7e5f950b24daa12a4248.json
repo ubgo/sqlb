@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Query build and failure boundary. A select builder renders through a fresh Args, then returns Query SQL, ordered Args and scan Targets. Build returns an empty Query on rendering failure. Ordinary parameters become placeholders plus argument values, rather than SQL text. This lets callers reject build errors before executing an incomplete query; explicit raw/literal APIs remain an author-controlled boundary.\n\nEvidence: ds:block?id=select-build-h68d49p3; ds:block?id=parameter-flow-pdh445xg; ds:block?id=build-failure-pwec46e6; ds:block?id=bound-values-3t7cnq5d. See docs/architecture.md and docs/operating-notes.md. Verified from the implementation and tests on 2026-11-01; server-test gates are explicitly distinguished from execution.",
+  "confidence": null,
+  "created_at": "2026-11-01T18:56:18.076941000Z",
+  "created_by_actor_id": "act_44e6f0f93d1174d1b1ad4c8d46b37885",
+  "id": "mem_01a19878389c7e5f950b24daa12a4248",
+  "kind": "core",
+  "last_validated_at": null,
+  "project_id": "prj_01a198235aec7338a4c679214eeabefb",
+  "repo_id": "rep_814705e241747bc4a7ef20b6d32f7fd7",
+  "source_kind": "manual",
+  "source_ref": "ds:block?id=select-build-h68d49p3; ds:block?id=parameter-flow-pdh445xg; ds:block?id=build-failure-pwec46e6; ds:block?id=bound-values-3t7cnq5d",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-11-01T18:56:18.076954000Z",
+  "updated_at": "2026-11-01T18:56:18.076941000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

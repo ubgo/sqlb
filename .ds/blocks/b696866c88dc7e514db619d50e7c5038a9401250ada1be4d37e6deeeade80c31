@@ -1,0 +1,38 @@
+func execute(ctx context.Context, conn *sql.Conn, s ddl.Script, begin beginner) error {
+	var tx txn
+	commit := func() error {
+		if tx == nil {
+			return nil
+		}
+		err := tx.Commit()
+		tx = nil
+		return err
+	}
+	fail := func(err error) error {
+		if tx != nil {
+			_ = tx.Rollback()
+		}
+		return err
+	}
+	for _, st := range s {
+		if st.OutsideTransaction || !st.Transactional {
+			if err := commit(); err != nil {
+				return err
+			}
+			if err := run(ctx, conn, st); err != nil {
+				return err
+			}
+			continue
+		}
+		if tx == nil {
+			var err error
+			if tx, err = begin(ctx, conn); err != nil {
+				return err
+			}
+		}
+		if err := run(ctx, tx, st); err != nil {
+			return fail(err)
+		}
+	}
+	return commit()
+}

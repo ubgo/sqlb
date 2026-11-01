@@ -145,6 +145,7 @@ func (s Set) Validate() error {
 // order of independent tables, and resolving that freedom by name rather than
 // by map iteration is what keeps a generated migration from changing shape
 // between runs for no reason.
+// ds:def id=schema-sort-wshjpc9c
 func (s Set) Sorted() ([]Table, error) {
 	if err := s.Validate(); err != nil {
 		return nil, err

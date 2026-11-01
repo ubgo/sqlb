@@ -1,0 +1,23 @@
+{
+  "_table": "memories",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Declared types versus database truth. Expr[T] is a concrete generic expression carrying rendering behavior and optional column metadata. Col[T] declares the Go type; it does not inspect a database. Bind couples that type to a destination pointer. schema.Col adds a check against declared schema metadata, not against the live catalogue. This distinction matters because compiler success does not establish that a deployed schema matches the declaration.\n\nEvidence: ds:block?id=typed-expression-bpqvb4a9; ds:block?id=column-declaration-gthk6bb2; ds:block?id=schema-types-r4ut75bs. See docs/architecture.md and docs/operating-notes.md. Verified from the implementation and tests on 2026-11-01; server-test gates are explicitly distinguished from execution.",
+  "confidence": null,
+  "created_at": "2026-11-01T18:56:18.009490000Z",
+  "created_by_actor_id": "act_44e6f0f93d1174d1b1ad4c8d46b37885",
+  "id": "mem_01a198783859777ab2a9b5d09fa5542d",
+  "kind": "core",
+  "last_validated_at": null,
+  "project_id": "prj_01a198235aec7338a4c679214eeabefb",
+  "repo_id": "rep_814705e241747bc4a7ef20b6d32f7fd7",
+  "source_kind": "manual",
+  "source_ref": "ds:block?id=typed-expression-bpqvb4a9; ds:block?id=column-declaration-gthk6bb2; ds:block?id=schema-types-r4ut75bs",
+  "superseded_by_id": null,
+  "trust_score": 0.5,
+  "tx_at": "2026-11-01T18:56:18.009500000Z",
+  "updated_at": "2026-11-01T18:56:18.009490000Z",
+  "valid_at": null,
+  "valid_until": null,
+  "validated_by_actor_id": null
+}

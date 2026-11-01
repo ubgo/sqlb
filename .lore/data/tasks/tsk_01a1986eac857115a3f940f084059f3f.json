@@ -1,0 +1,23 @@
+{
+  "_table": "tasks",
+  "_v": 1,
+  "assigned_to_actor_id": null,
+  "body": "User asked (verbatim):\nYou previously opened PR #3 (\"Add shared Lore/Docsync workflow…\"). You set up the lore + docsync plumbing and a few rules/decisions, but you did not actually capture the repo's knowledge — the lore has rules and decisions but no memories, no architecture notes, no patterns, no hotfixes, and the docs don't explain how SQLB actually works. A PR that builds the feature and scaffolds the tools but leaves the knowledge base empty is only half done. Finish it, in this order:\n\n1. First, learn the repo (don't guess). Read CLAUDE.md/AGENTS.md, the existing .lore/data/, the .ds/ docs, the package layout, and the public API. Run the build and the tests so you understand real behavior, not assumed behavior.\n\n2. Capture FACTS about the repo into lore memories / architecture_notes. What is SQLB, what problem it solves, its module/package structure, the core types and the data flow (query build → dialect render → scan), the supported dialects (Postgres/MySQL/SQLite/ClickHouse) and how they differ, the invariants that must hold, and how it's tested. Use lore memory add and lore architecture add (or the equivalents). Each fact should say why, not just what.\n\n3. Capture PATTERNS and HOTFIXES. Every non-obvious \"this is how we do X here\" is a pattern; every gotcha/trap you hit or that would bite the next person (dialect quirks, scan/nullable edge cases, build/test traps) is a hotfix/lesson. The lore currently has zero of these — that's the biggest miss.\n\n4. Keep DOCSYNC in step. Update the docs so they explain the above, each claim anchored to a stable code reference (ds ref), and make sure ds check (freshness + references) passes inside task check. Don't let docs drift from the code.\n\n5. Render + commit the knowledge. Re-render CLAUDE.md/AGENTS.md from lore, lore sync, and commit .lore/data/ (never lore.db) + the docsync changes together. Mark the lore task done and lore link the commit.\n\n6. Finalize honestly. Update CHANGELOG.md and sweep all docs for drift; keep GitHub Actions manual-dispatch; no mention of AI/Claude/Codex in commit messages or PR text; commit as the repo's configured author.\n\nDeliverable: the lore has real memories + architecture notes + patterns + hotfixes (not just rules), the docs explain SQLB with live code references, and task check is green. Report what facts/memories/patterns/hotfixes you added (counts + the key ones).\n\nContext:\nComplete knowledge capture in the existing public PR https://github.com/ubgo/sqlb/pull/3.\n\nAcceptance:\nVerified facts and rationale in all four requested Lore categories, live code-linked docs, changelog and drift review, green task check, rendered and committed shared data, completed task linked to its commit.",
+  "commitment": "accepted",
+  "completed_at": "2026-11-01T18:59:48.727359000Z",
+  "created_at": "2026-11-01T18:45:52.389069000Z",
+  "created_by_actor_id": "act_44e6f0f93d1174d1b1ad4c8d46b37885",
+  "deferred_until": null,
+  "due_at": null,
+  "id": "tsk_01a1986eac857115a3f940f084059f3f",
+  "mission_id": null,
+  "plan_id": null,
+  "priority": "high",
+  "project_id": "prj_01a198235aec7338a4c679214eeabefb",
+  "repo_id": null,
+  "started_at": "2026-11-01T18:45:52.455676000Z",
+  "status": "done",
+  "tasklist_id": "tlt_01a1983642097dc7a48c8a8f10fdb24f",
+  "title": "Capture verified SQLB architecture, patterns and operating lessons",
+  "updated_at": "2026-11-01T18:59:48.727627000Z"
+}

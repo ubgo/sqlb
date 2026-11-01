@@ -1,0 +1,14 @@
+func Open(dsn string, opts ...Option) (*sql.DB, error) {
+	cfg := config{useDefaults: true, maxOpen: -1}
+	for _, o := range opts {
+		o(&cfg)
+	}
+	db, err := sql.Open(DriverName, buildDSN(dsn, cfg))
+	if err != nil {
+		return nil, fmt.Errorf("driversqlite: open %q: %w", dsn, err)
+	}
+	if cfg.maxOpen > 0 {
+		db.SetMaxOpenConns(cfg.maxOpen)
+	}
+	return db, nil
+}

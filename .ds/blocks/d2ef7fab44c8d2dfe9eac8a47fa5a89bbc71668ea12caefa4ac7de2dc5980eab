@@ -1,0 +1,12 @@
+func TestPromise_CookbookPackageBoundaries(t *testing.T) {
+	for _, pkg := range []string{"authlite", "workspace"} {
+		productionFiles(t, filepath.Join("examples", "cookbook", pkg), func(path string, f *ast.File) {
+			for _, imp := range f.Imports {
+				p, _ := strconv.Unquote(imp.Path.Value)
+				if strings.Contains(p, "/examples/cookbook/") {
+					t.Errorf("independent cookbook package imports sibling %s in %s", p, path)
+				}
+			}
+		})
+	}
+}

@@ -1,0 +1,44 @@
+func (s Set) Sorted() ([]Table, error) {
+	if err := s.Validate(); err != nil {
+		return nil, err
+	}
+
+	deps := map[string]map[string]bool{}
+	for _, k := range s.keys() {
+		deps[k] = map[string]bool{}
+		for _, fk := range s.tables[k].ForeignKeys {
+			// A self-reference is legal and imposes no ordering: the table is
+			// created once and the constraint points back into itself.
+			if fk.RefTable != k {
+				deps[k][fk.RefTable] = true
+			}
+		}
+	}
+
+	var out []Table
+	done := map[string]bool{}
+	for len(done) < len(deps) {
+		progress := false
+		for _, k := range s.keys() {
+			if done[k] {
+				continue
+			}
+			ready := true
+			for d := range deps[k] {
+				if !done[d] {
+					ready = false
+					break
+				}
+			}
+			if ready {
+				out = append(out, s.tables[k])
+				done[k] = true
+				progress = true
+			}
+		}
+		if !progress {
+			return nil, fmt.Errorf("%w: among %v", ErrCycle, remaining(s.keys(), done))
+		}
+	}
+	return out, nil
+}

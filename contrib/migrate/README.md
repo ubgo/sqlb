@@ -170,6 +170,6 @@ The table behind both `SQLType` and `Engines` is `schema`'s — `schema.EngineTy
 
 ## Why this is a separate module
 
-`contrib` is for what does not belong in the core, and a third-party dependency is only the most common reason. This package has none: it is here because it targets specific engines and emits DDL, and the core stays free of both — free of DDL for the same reason it stays free of drivers.
+The root `ddl` package renders authored statements; this separate module assembles schema contributions and executes scripts and ledger migrations. Keeping orchestration opt-in lets query-building consumers avoid schema-management concerns. See the [architecture guide](../../docs/architecture.md#schema-and-migrations).
 
 `schema` describes and never does. This is the "does", and keeping it outside is what makes that claim checkable rather than a matter of taste.

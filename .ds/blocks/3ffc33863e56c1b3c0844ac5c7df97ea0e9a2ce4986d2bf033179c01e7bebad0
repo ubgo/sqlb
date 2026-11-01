@@ -1,0 +1,16 @@
+func Map2[A, B, C any](a Reader[A], b Reader[B], f func(A, B) C) Reader[C] {
+	cols := make([]render.SQLer, 0, len(a.cols)+len(b.cols))
+	cols = append(cols, a.cols...)
+	cols = append(cols, b.cols...)
+	return Reader[C]{
+		cols: cols,
+		alloc: func() ([]any, func() C) {
+			da, ga := a.alloc()
+			db, gb := b.alloc()
+			dests := make([]any, 0, len(da)+len(db))
+			dests = append(dests, da...)
+			dests = append(dests, db...)
+			return dests, func() C { return f(ga(), gb()) }
+		},
+	}
+}

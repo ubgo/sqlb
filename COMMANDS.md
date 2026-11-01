@@ -1,3 +1,8 @@
+---
+ds:
+  covers: [manual-workflow-4epxh4zk]
+---
+
 # Commands
 
 Every command this repository uses, and why. Every command is a [Taskfile](https://taskfile.dev) task, so `task --list` shows them all and nothing here has to be retyped. The first half is the workflows; the second half is generated from `Taskfile.yml` and is every task with the exact commands it runs, so it cannot drift from what the tasks do.
@@ -23,7 +28,7 @@ task check    # gofmt, vet and tests in every module, the negative type-check bu
 task lint     # golangci-lint in every module; must report zero issues
 ```
 
-`task check` is the gate a change is held to. CI runs `volt ci` on every push and pull request through the volt-generated `ci.yml`, which covers format, vet, lint and race tests but not the type-check, zero-dependency or documentation gates, so the local gate is the real one. `task check` runs the Postgres and MySQL proofs too, but they skip loudly when no server is configured; the next section is how to run them for real.
+`task check` is the gate a change is held to. GitHub Actions are manual-dispatch in this repository; they do not run automatically on a push or pull request. Run the full local gate before requesting review. [Manual test workflow](ds:block?id=manual-workflow-4epxh4zk) `task check` runs the Postgres and MySQL proofs too, but they skip loudly when no server is configured; the next section is how to run them for real.
 
 ## Running the proof on all three engines
 
@@ -427,8 +432,8 @@ task module:lint
 Refresh shared Lore context for Claude Code and Codex
 
 ```sh
-lore render
-lore render --target=AGENTS.md
+lore render --repo=sqlb
+lore render --repo=sqlb --target=AGENTS.md
 ```
 
 ### `task module:check` (internal)

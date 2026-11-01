@@ -1,0 +1,11 @@
+func TestPromise_CoreHasNoThirdPartyImports(t *testing.T) {
+	productionFiles(t, ".", func(path string, f *ast.File) {
+		for _, imp := range f.Imports {
+			p, _ := strconv.Unquote(imp.Path.Value)
+			first, _, _ := strings.Cut(p, "/")
+			if strings.Contains(first, ".") && (!strings.HasPrefix(p, "github.com/ubgo/sqlb/") && p != "github.com/ubgo/sqlb" || strings.HasPrefix(p, "github.com/ubgo/sqlb/contrib/")) {
+				t.Errorf("core imports third party %s in %s", p, path)
+			}
+		}
+	})
+}

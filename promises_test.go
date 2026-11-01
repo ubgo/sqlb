@@ -107,6 +107,7 @@ func productionFiles(t *testing.T, dir string, visit func(string, *ast.File)) {
 }
 
 // promise:root-zero-dependencies
+// ds:def id=core-boundaries-y4kpz7kr
 func TestPromise_CoreHasNoThirdPartyImports(t *testing.T) {
 	productionFiles(t, ".", func(path string, f *ast.File) {
 		for _, imp := range f.Imports {
@@ -158,6 +159,7 @@ func TestPromise_CoreDoesNotOpenConnections(t *testing.T) {
 }
 
 // promise:cross-package
+// ds:def id=project-purpose-7mzq92jv
 func TestPromise_CookbookPackageBoundaries(t *testing.T) {
 	for _, pkg := range []string{"authlite", "workspace"} {
 		productionFiles(t, filepath.Join("examples", "cookbook", pkg), func(path string, f *ast.File) {

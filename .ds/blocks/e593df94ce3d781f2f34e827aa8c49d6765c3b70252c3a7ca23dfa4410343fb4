@@ -1,0 +1,18 @@
+func requireExts(t *testing.T, db *sql.DB) {
+	t.Helper()
+	ctx := context.Background()
+	var missing []string
+	for _, name := range extNeeded {
+		if _, err := db.ExecContext(ctx, `CREATE EXTENSION IF NOT EXISTS `+name); err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == codeFeatureNotSupported {
+				missing = append(missing, name)
+				continue
+			}
+			t.Fatalf("CREATE EXTENSION %s: %v", name, err)
+		}
+	}
+	if len(missing) > 0 {
+		t.Skipf("SKIPPED, NOT PASSED: this server does not ship %s", strings.Join(missing, ", "))
+	}
+}

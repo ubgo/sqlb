@@ -66,6 +66,7 @@ var extDDL = []string{
 // server is a property of the server, so reporting it as a failure would make
 // a Postgres 18 container that carries no pgvector look like a broken suite;
 // the skip says which extension is missing, so a skip is never silent.
+// ds:def id=postgres-extensions-j5kc5mqu
 func requireExts(t *testing.T, db *sql.DB) {
 	t.Helper()
 	ctx := context.Background()

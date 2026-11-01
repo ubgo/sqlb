@@ -1,0 +1,31 @@
+func TestDialects_SatisfyRenderDialect(t *testing.T) {
+	cases := []struct {
+		d            render.Dialect
+		name         string
+		placeholder1 string
+		quoted       string
+		returning    bool
+	}{
+		{postgres.Dialect{}, "postgres", "$1", `"id"`, true},
+		{sqlite.Dialect{}, "sqlite", "?", `"id"`, true},
+		{mysql.Dialect{}, "mysql", "?", "`id`", false},
+		{clickhouse.Dialect{}, "clickhouse", "?", "`id`", false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := render.DialectName(c.d); got != c.name {
+				t.Errorf("DialectName = %q, want %q", got, c.name)
+			}
+			if got := c.d.Placeholder(1); got != c.placeholder1 {
+				t.Errorf("Placeholder(1) = %q, want %q", got, c.placeholder1)
+			}
+			if got := c.d.QuoteIdent("id"); got != c.quoted {
+				t.Errorf("QuoteIdent = %q, want %q", got, c.quoted)
+			}
+			r, ok := c.d.(render.Returning)
+			if got := ok && r.SupportsReturning(); got != c.returning {
+				t.Errorf("RETURNING = %v, want %v", got, c.returning)
+			}
+		})
+	}
+}

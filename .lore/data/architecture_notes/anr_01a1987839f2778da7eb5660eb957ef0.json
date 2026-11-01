@@ -1,0 +1,12 @@
+{
+  "_table": "architecture_notes",
+  "_v": 1,
+  "body": "The root sqlb facade exposes expression, statement, binding and execution APIs. render owns SQLer, Args and the minimal Dialect contract. dialect/* supplies engine spelling; expr builds typed expressions; stmt owns statement structure and Query; bind couples expressions to pointers; exec uses database/sql-compatible DBTX; scan adds value readers. schema and ddl form the optional schema path, and pg/mysql/sqlite/ch hold engine constructs. Contrib modules isolate drivers and tooling from the root dependency budget. Keeping these boundaries explicit makes it possible to import or extend a lower layer without adopting the facade.\n\nEvidence: ds:block?id=core-boundaries-y4kpz7kr; ds:block?id=typed-expression-bpqvb4a9; ds:block?id=dialect-contract-smkbmeyz; ds:block?id=select-build-h68d49p3; ds:block?id=bound-one-x39s9kka; ds:block?id=reader-flow-xcq2taqt; ds:block?id=ddl-contract-s2xdb9he; ds:block?id=workspace-f7vpgvxp. See docs/architecture.md and docs/operating-notes.md. Verified from the implementation and tests on 2026-11-01; server-test gates are explicitly distinguished from execution.",
+  "created_at": "2026-11-01T18:56:18.418494000Z",
+  "created_by_actor_id": "act_44e6f0f93d1174d1b1ad4c8d46b37885",
+  "id": "anr_01a1987839f2778da7eb5660eb957ef0",
+  "project_id": "prj_01a198235aec7338a4c679214eeabefb",
+  "repo_id": "rep_814705e241747bc4a7ef20b6d32f7fd7",
+  "title": "Package layers and the public facade",
+  "updated_at": "2026-11-01T18:56:18.418494000Z"
+}

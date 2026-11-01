@@ -1,3 +1,8 @@
+---
+ds:
+  covers: [reader-allocation-nktfvyeg, reader-projection-3xfnp55v, reader-sharing-79k4pyx5]
+---
+
 # `scan` — results as values
 
 ```go
@@ -6,7 +11,7 @@ import "github.com/ubgo/sqlb/scan"
 
 The other result strategy. A `Reader` captures no caller memory: it allocates fresh destinations for every row and hands back a value.
 
-That single difference is why **one `Reader` is safe to share across any number of concurrent executions**, where a bound query is not. Sixty-four goroutines share one `Reader` against a real database under `-race` in the test suite, and every one gets its own correct rows.
+A Reader built with fresh per-row storage and concurrency-safe mapping callbacks can be shared between executions. Custom allocators must preserve that contract. [reader allocation](ds:block?id=reader-allocation-nktfvyeg) [reader sharing](ds:block?id=reader-sharing-79k4pyx5&assert=true) Sixty-four goroutines share one `Reader` against a real database under `-race` in the test suite, and every one gets its own correct rows.
 
 ## Contents
 
@@ -99,6 +104,8 @@ scan.Map(scan.Field(UserID), func(s string) UserID { return UserID(s) })
 ```
 
 ## Running one
+
+Pass a statement without an existing select list. Reader columns append to the projection, and database/sql reports a destination-count mismatch if extra columns remain. [reader projection](ds:block?id=reader-projection-3xfnp55v&assert=true)
 
 `All` and `One` finish the statement with the reader's columns and execute it:
 

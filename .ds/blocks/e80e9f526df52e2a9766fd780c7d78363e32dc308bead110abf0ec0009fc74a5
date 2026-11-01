@@ -1,0 +1,4 @@
+func Memory(opts ...Option) (*sql.DB, error) {
+	all := append([]Option{WithMaxOpenConns(1)}, opts...)
+	return Open(":memory:", all...)
+}

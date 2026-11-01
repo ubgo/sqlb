@@ -75,6 +75,7 @@ func appTables() []schema.Table {
 // emerges from putting them in one Set, which is the argument for having a
 // shared schema vocabulary at all.
 // promise:schema-composition
+// ds:def id=schema-order-mc4m9j96
 func TestSet_OrdersTablesFromPackagesThatDoNotKnowEachOther(t *testing.T) {
 	set, err := schema.New("ubgo/auth", authTables()...)
 	if err != nil {
@@ -245,6 +246,7 @@ func TestSchema_BridgesToTheQueryBuilder(t *testing.T) {
 // TestSchema_ColRejectsTheWrongGoType pins the mistake this package can
 // actually catch. Asking for an int from a text column is a scan failure in
 // production and an error at declaration time here.
+// ds:def id=schema-types-r4ut75bs
 func TestSchema_ColRejectsTheWrongGoType(t *testing.T) {
 	users := authTables()[0]
 	if _, err := schema.Col[int](users, "email"); !errors.Is(err, schema.ErrTypeMismatch) {

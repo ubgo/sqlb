@@ -10,6 +10,7 @@ import (
 )
 
 // openOrSkip opens the database SQLB_MYSQL_DSN names, or skips loudly.
+// ds:def id=mysql-gate-xzbtwu8b
 func openOrSkip(t *testing.T) *sql.DB {
 	t.Helper()
 	dsn, ok := drivermysql.DSNFromEnv()

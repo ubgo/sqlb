@@ -1,3 +1,4 @@
+// ds:def id=workspace-f7vpgvxp span=+32
 // The Go workspace for this repository.
 //
 // Why it is committed: contrib modules depend on the core, which is in the

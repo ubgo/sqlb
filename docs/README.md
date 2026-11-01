@@ -4,6 +4,8 @@
 
 | Document | What it answers |
 |---|---|
+| [architecture.md](./architecture.md) | Package boundaries, the build/render/scan pipeline, dialect capabilities and testing evidence. |
+| [operating-notes.md](./operating-notes.md) | Reusable patterns and the traps to check before changing a query or migration. |
 | [knowledge-workflow.md](./knowledge-workflow.md) | Shared Lore context, Docsync references and the promise gate. |
 | [promise-audit.md](./promise-audit.md) | Initial promise assertions, corrections and verification limits. |
 | [cross-package.md](./cross-package.md) | The problem the library exists for: four packages that do not import each other, composed into one statement, and the three ownership shapes. |
@@ -35,12 +37,12 @@ The documents above are by topic. These are by package, one for each layer, with
 
 And one page per engine construct package, which are by far the largest:
 
-| Package | Names | Read it to learn |
-|---|---:|---|
-| [pg](./pg/README.md) | 978 | starting a Postgres statement, arrays, JSONB, ranges, full-text search, locking, and the eight extension sub-packages |
-| [sqlite](./sqlite/README.md) | 214 | starting a SQLite statement, JSON without a JSON type, the two upsert mechanisms, FTS5, and the connection-scoped functions |
-| [mysql](./mysql/README.md) | 170 | starting a MySQL statement, the upsert with its row alias, locking reads, full-text search, and MySQL's DDL |
-| [ch](./ch/README.md) | 25 | `FINAL`, `LIMIT BY`, conditional aggregates, `SETTINGS` |
+| Package | Read it to learn |
+|---|---|
+| [pg](./pg/README.md) | starting a Postgres statement, arrays, JSONB, ranges, full-text search, locking, and the eight extension sub-packages |
+| [sqlite](./sqlite/README.md) | starting a SQLite statement, JSON without a JSON type, the two upsert mechanisms, FTS5, and the connection-scoped functions |
+| [mysql](./mysql/README.md) | starting a MySQL statement, the upsert with its row alias, locking reads, full-text search, and MySQL's DDL |
+| [ch](./ch/README.md) | `FINAL`, `LIMIT BY`, conditional aggregates, `SETTINGS` |
 
 Each ends with a complete reference table generated from the source, so no construct is discoverable only by reading the code.
 

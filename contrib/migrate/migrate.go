@@ -1,21 +1,11 @@
-// Package migrate turns a schema declaration into CREATE TABLE statements.
+// Package migrate plans and executes explicitly declared schema changes.
 //
-// It is the first consumer of github.com/ubgo/sqlb/schema, and it exists as
-// much to prove that layer carries its weight as to be used. A schema is only
-// worth describing if something can act on the description without knowing who
-// wrote it, and this package acts on a Set assembled from packages that never
-// imported each other.
-//
-// Deliberately narrow. It renders the DDL to create a schema that does not yet
-// exist, in an order that satisfies foreign keys, and it stops there. It does
-// not diff against a live database, because that needs introspection and
-// introspection is engine-specific in a way DDL generation is not; it does not
-// apply anything, because deciding when to run DDL is an operational question
-// and not a library's. Both are reasonable things to build on top, and both
-// would be worse hidden inside this.
-//
-// It lives under contrib because it targets specific engines. The core stays
-// free of DDL for the same reason it stays free of drivers.
+// Plan renders CREATE statements from schema.Set. Install orders authored DDL
+// contributions through their Describe metadata. Execute runs a ddl.Script on
+// one connection while honoring transaction and check flags. Ledger adds
+// owner/name identity, checksums and locking for repeatable migration runs.
+// None of these APIs infers a diff from a live database: callers supply the
+// desired statements and decide when to execute them.
 package migrate
 
 import (
@@ -34,15 +24,8 @@ import (
 // found months later in the data, not at migration time.
 var ErrNoTypeMapping = errors.New("migrate: engine has no mapping for this column type")
 
-// types maps a portable schema type to each engine's spelling.
-//
-// The mapping lives here rather than in the schema package because it is the
-// one part of DDL that is genuinely per engine, and the schema layer's whole
-// value is that one declaration serves every engine. Keeping the table here
-// means adding an engine is a change to this file and to nothing else.
-// The per-engine spelling table lives in schema, so this renderer and sqlb
-// vet, which checks declarations against a live catalogue, read one table
-// and cannot disagree about what a bigint is.
+// Type spellings live in schema so this renderer and the live-schema checker
+// use the same engine mapping.
 
 // Engines reports which engines this package can render DDL for, in a stable
 // order, so a caller can check before it starts rather than after.

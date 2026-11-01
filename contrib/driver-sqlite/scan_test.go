@@ -5,11 +5,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 
+	"github.com/ubgo/sqlb/bind"
 	driversqlite "github.com/ubgo/sqlb/contrib/driver-sqlite"
 	"github.com/ubgo/sqlb/dialect/sqlite"
+	"github.com/ubgo/sqlb/exec"
 	"github.com/ubgo/sqlb/expr"
 	"github.com/ubgo/sqlb/scan"
 	"github.com/ubgo/sqlb/stmt"
@@ -77,6 +80,41 @@ func TestScan_ReturnsValues(t *testing.T) {
 	}
 }
 
+// A value reader takes the first row; a bound identity query checks uniqueness.
+// promise:scan-cardinality
+// ds:def id=reader-cardinality-332zvda7
+func TestScan_OneAndBoundOneHaveDifferentCardinality(t *testing.T) {
+	db := seeded(t, "")
+	got, err := scan.One(context.Background(), db, byAge(), personReader)
+	if err != nil || got != (person{"ada@x.com", 36}) {
+		t.Fatalf("first row: got %v, err %v", got, err)
+	}
+	var email string
+	q, err := byAge().Columns(bind.Bind(personEmail, &email)).Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := exec.One(context.Background(), db, q); !errors.Is(err, exec.ErrMultipleRows) {
+		t.Fatalf("bound One: want ErrMultipleRows, got %v", err)
+	}
+}
+
+// Reader columns append to the projection; database/sql requires one destination
+// per result column, so an existing projection is not silently ignored.
+// promise:scan-projection
+// ds:def id=reader-projection-3xfnp55v
+func TestScan_ExistingProjectionIsNotIgnored(t *testing.T) {
+	s := byAge().Exprs(personAge)
+	_, err := scan.All(context.Background(), seeded(t, ""), s, personReader)
+	if err == nil || !strings.Contains(err.Error(), "expected 3 destination arguments in Scan, not 2") {
+		t.Fatalf("want projection-width scan error, got %v", err)
+	}
+	q, err := s.Build()
+	if err != nil || q.SQL != `SELECT "p"."age" FROM "people" AS "p" ORDER BY "p"."age" ASC` {
+		t.Fatalf("reader changed caller's statement: %q, %v", q.SQL, err)
+	}
+}
+
 // TestScan_OneReportsNoRows pins the sentinel, which aliases sql.ErrNoRows so a
 // caller's existing errors.Is keeps working.
 func TestScan_OneReportsNoRows(t *testing.T) {
@@ -114,6 +152,7 @@ func TestScan_EmptyReaderIsRejected(t *testing.T) {
 // the difference between the two strategies stated as a test rather than as a
 // paragraph.
 // promise:scan-concurrency
+// ds:def id=reader-sharing-79k4pyx5
 func TestScan_OneReaderIsSafeToShare(t *testing.T) {
 	db := seeded(t, "file:sharedreader?mode=memory&cache=shared")
 	ctx := context.Background()

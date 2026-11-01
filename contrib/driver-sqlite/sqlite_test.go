@@ -12,7 +12,7 @@ import (
 	"github.com/ubgo/sqlb/sqlbtest"
 )
 
-// setupDDL is sqlbtest.Schema in SQLite's spelling. sqlb generates no DDL, so
+// setupDDL is sqlbtest.Schema in SQLite's spelling. the suite owns its fixture DDL, so
 // every integration writes this once, and the conformance suite binds to the
 // names it declares.
 var setupDDL = []string{
@@ -78,6 +78,7 @@ func TestConformance_FileBacked(t *testing.T) {
 // The pragmas must hold on every connection in the pool, which is the whole
 // reason they go in the DSN rather than through an Exec.
 // promise:sqlite-pragmas
+// ds:def id=sqlite-pragmas-d6qmetcs
 func TestPragmas_AppliedToEveryConnection(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "pragmas.db")
 	db, err := driversqlite.Open(path, driversqlite.WithMaxOpenConns(4))

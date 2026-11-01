@@ -1,0 +1,13 @@
+func openOrSkip(t *testing.T) *sql.DB {
+	t.Helper()
+	dsn, ok := driverpgx.DSNFromEnv()
+	if !ok {
+		t.Skipf("%s not set: the Postgres proof did not run", driverpgx.EnvDSN)
+	}
+	db, err := driverpgx.Open(dsn)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	return db
+}

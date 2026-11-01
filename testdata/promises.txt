@@ -125,7 +125,6 @@ design-rationale	prose: design rationale or recommended use; not a runtime invar
 cross-package	test	It must let the application join across the boundary into tables it has never heard of, and it must do so without pulling a code generator or a second ORM into an application that may already have one.
 external-extensions	test	- **Extensions are sub-packages over exported guarded constructors**, so adding pgvector support, or the next extension nobody has written yet, never edits the engine package.
 engine-guard	test	The failure is still in your process and still names the construct — it is never a syntax error from the database at three in the morning.
-pg-live	test	`sqlbtest` is a shared conformance suite every driver runs; `contrib/driver-sqlite` executes every `sqlite` construct against a real database, and `contrib/driver-pgx` executes every construct in `pg` and its eight extension packages — 593 cases — against Postgres 17, and the same suite again against Postgres 18 for the constructs 17 refuses.
 cross-package	test	| A library can export typed columns for code that has never seen its schema | ✅ | ⚠️ only if both sides adopt the same tool | ❌ | ❌ |
 cross-package	test	If you want a library's tables to be joinable by code that has never seen its schema, without either side adopting the other's ORM, that is `sqlb`.
 connection-ownership	test	`sqlb` never opens a connection for you — it takes any `database/sql` handle, so `*sql.DB` and `*sql.Tx` both work and your existing pool is the pool.
@@ -298,7 +297,6 @@ select-boundaries	test	**The set is complete, not minimal.** There is a slot at 
 design-rationale	prose: design rationale or recommended use; not a runtime invariant	**Which statement a clause belongs to.** A statement can contain others, and the answer is not always the obvious one.
 
 # Source: docs/engines.md
-pg-live	test	`contrib/driver-pgx` executes the conformance suite and every construct in `pg` and its extension packages against a real Postgres 17 — 593 cases — gated on `SQLB_PG_DSN`, and the same suite runs against a Postgres 18 container for the constructs 17 refuses.
 design-rationale	prose: design rationale or recommended use; not a runtime invariant	And omitting `In` means `ACCESS EXCLUSIVE`, the strongest mode, which blocks even a plain `SELECT` — so naming the mode is almost always right.
 engine-guard	test	Every construct in this package records its name when rendered through another dialect, so a Postgres-only helper that reaches a SQLite statement fails at `Build`, in your process, naming the construct — never at the database.
 
@@ -501,3 +499,7 @@ pg-json-wrapper	test	| `pg.WithWrapper` | WithWrapper wraps a matched result in 
 
 # Source: built sqlb vet -help
 vet-source-checks	test	the source checks always run
+scan-cardinality	test	scan.One returns the first row and does not test for a second; exec.One returns ErrMultipleRows for a bound query matching more than one row.
+scan-projection	test	Reader columns append; they do not replace or ignore existing selected columns.
+historical-context	prose: retrospective explanation of earlier defects or testing choices	This replaces the old, incorrect comment that extra columns were selected but never scanned.
+architecture-summary	prose: index of independently asserted contracts linked immediately after the summary	The central invariants are ordered parameters and destinations, refusal of known unsupported dialect constructs, explicit destination ownership, deterministic schema ordering and the root dependency boundary.

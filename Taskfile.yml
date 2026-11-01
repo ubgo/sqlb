@@ -16,7 +16,7 @@ tasks:
     cmds:
       - task --list
 
-  check:
+  check:   # ds:def id=gate-9g2wphfm
     desc: The gate - every module formatted, vetted and tested, plus the core's own gates
     cmds:
       - task: check:modules
@@ -390,8 +390,8 @@ tasks:
   lore:render:
     desc: Refresh shared Lore context for Claude Code and Codex
     cmds:
-      - lore render
-      - lore render --target=AGENTS.md
+      - lore render --repo=sqlb
+      - lore render --repo=sqlb --target=AGENTS.md
 
   knowledge:setup:
     desc: Hydrate Lore and scan documentation after cloning (requires lore and ds)

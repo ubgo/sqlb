@@ -36,6 +36,7 @@ var ErrZeroValue = errors.New("sqlb/ddl: built from a zero value rather than its
 
 // Statement is one DDL statement. It carries no arguments: every value inside
 // it was written as a literal, so it is passed to a driver as text alone.
+// ds:def id=ddl-contract-s2xdb9he
 type Statement struct {
 	SQL string
 

@@ -1,0 +1,20 @@
+{
+  "_table": "patterns",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Expose typed table/column values from a library and accept caller composition at query boundaries. Keep application-only joins and filters in the application. This preserves compile-time expression compatibility without creating imports between packages that own unrelated tables.\n\nEvidence: ds:block?id=project-purpose-7mzq92jv; ds:block?id=column-declaration-gthk6bb2. See docs/architecture.md and docs/operating-notes.md. Verified from the implementation and tests on 2026-11-01; server-test gates are explicitly distinguished from execution.",
+  "confidence": null,
+  "created_at": "2026-11-01T18:56:18.700352000Z",
+  "created_by_actor_id": "act_44e6f0f93d1174d1b1ad4c8d46b37885",
+  "id": "pat_01a198783b0c7562927449496a662d71",
+  "language": null,
+  "last_validated_at": null,
+  "project_id": "prj_01a198235aec7338a4c679214eeabefb",
+  "repo_id": "rep_814705e241747bc4a7ef20b6d32f7fd7",
+  "source_kind": "manual",
+  "source_ref": null,
+  "superseded_by_id": null,
+  "title": "Export columns; let callers compose",
+  "trust_score": 0.5,
+  "updated_at": "2026-11-01T18:56:18.700352000Z"
+}

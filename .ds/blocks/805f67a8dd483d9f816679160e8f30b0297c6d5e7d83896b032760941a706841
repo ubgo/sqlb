@@ -1,0 +1,12 @@
+func (s *Select[D]) Build() (Query, error) {
+	args := NewArgs(s.dialect)
+	var b strings.Builder
+	s.WriteSQL(&b, args)
+	if err := args.Err(); err != nil {
+		return Query{}, err
+	}
+	if s.guard == nil {
+		s.guard = &execGuard{}
+	}
+	return newQueryWith(s.guard, b.String(), args.Values(), s.targets()), nil
+}

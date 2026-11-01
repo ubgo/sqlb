@@ -1,3 +1,8 @@
+---
+ds:
+  covers: [dialect-contract-smkbmeyz, dialect-matrix-efpaw6ht, mysql-gate-xzbtwu8b, postgres-arrays-5w7ytu86, postgres-extensions-j5kc5mqu, postgres-gate-ctc94x6a, sqlite-pragmas-d6qmetcs, workspace-f7vpgvxp]
+---
+
 # Engine packages
 
 ## The rule
@@ -10,22 +15,15 @@ The core keeps the mechanisms, and the engine package makes the decisions. `Aggr
 
 ## Engines from outside this repository
 
-The three below are the ones this repository ships. They have no privilege a community package lacks: a dialect is three methods, the guard rule that makes constructs fail closed is exported, and the engine name is a plain string rather than an entry in a closed list. [dialects.md](./dialects.md) has the shape, and `engine_test.go` in the core proves it by building one from an external test package.
+The four dialect packages use the same public extension points as outside packages: Dialect requires two methods, while engine naming and capabilities are optional interfaces. [dialect contract](ds:block?id=dialect-contract-smkbmeyz) See [dialects.md](./dialects.md) and the [architecture guide](architecture.md).
 
-## Which engines are real
+## What is executed
 
-Three engines have a dialect in the core and a construct package. Only one of the three has ever been executed.
+Postgres, MySQL, SQLite and ClickHouse have dialects under `dialect/<engine>` and construct packages under `pg`, `mysql`, `sqlite` and `ch`. The dialect test checks placeholder spelling, identifier quoting and RETURNING capability for all four. [dialect matrix](ds:block?id=dialect-matrix-efpaw6ht&assert=true)
 
-| Engine | Dialect | Constructs | Executed against a real server |
-|---|---|---|---|
-| SQLite | `sqlb.SQLiteDialect` | `sqlite/`, 304 exported names | **Yes.** Every helper runs against a real database in `contrib/driver-sqlite`, including FTS5 and the conflict-resolution differences. |
-| Postgres | `sqlb.PostgresDialect` | `pg/`, 978 exported names, plus eight extension sub-packages | Yes. `contrib/driver-pgx` executes the conformance suite and every construct in `pg` and its extension packages against a real Postgres 17 — 593 cases — gated on `SQLB_PG_DSN`, and the same suite runs against a Postgres 18 container for the constructs 17 refuses. |
-| ClickHouse | `sqlb.ClickHouseDialect` | `ch/`, 25 exported names | No. |
-| MySQL 8 | `sqlb.MySQLDialect` | `mysql/`, 331 exported names | **Yes, all of it.** `contrib/driver-mysql` executes every construct and the DDL, and runs the shared conformance suite, on a real MySQL 8.4, gated on `SQLB_MYSQL_DSN`. Its first run found that the core's `LIKE` escape clause was a syntax error in MySQL's default mode. |
+SQLite tests use a local pure-Go database. PostgreSQL and MySQL suites execute when their DSNs are set; absent DSNs produce skips. PostgreSQL cases can also skip for server version or missing extensions. ClickHouse currently has rendering tests and no live driver module. This distinguishes a rendered-SQL assertion from demonstrated server behavior. [sqlite pragmas](ds:block?id=sqlite-pragmas-d6qmetcs&assert=true) [postgres gate](ds:block?id=postgres-gate-ctc94x6a) [mysql gate](ds:block?id=mysql-gate-xzbtwu8b) [postgres arrays](ds:block?id=postgres-arrays-5w7ytu86&assert=true) [postgres extensions](ds:block?id=postgres-extensions-j5kc5mqu) [workspace](ds:block?id=workspace-f7vpgvxp)
 
-All four dialects live in the core, beside each other in `dialect.go`. A dialect is about ten lines, every engine needs one, and a caller naming the engine it builds for should not have to import that engine's construct package to do it. The constructs themselves stay in the engine package.
-
-Read the right-hand column honestly. A `pg` helper is proven to render the text its test says it renders, which catches a wrong operator or a missing guard. It is not proven to be SQL Postgres accepts. `sqlite` is the only package here where both are true, and it is only true because its driver is pure Go and needs no server.
+Use the per-package generated reference tables for the current exported surface instead of duplicating symbol counts here.
 
 ## pg
 
@@ -119,7 +117,7 @@ SELECT array_sort("d"."tags") AS "sorted", array_reverse("d"."tags") AS "reverse
 [2 3]
 ```
 
-Version floors worth knowing, since the failure is a runtime error from the server rather than anything this library can catch: `trim_array` is Postgres 14, `array_shuffle` and `array_sample` are 16, and `array_sort` and `array_reverse` are 17. `ArraySortDesc` is a separate constructor rather than an option on `ArraySort` for exactly that reason: the two-argument form is 17, and a caller on 16 can use `ArraySort` without meeting the difference as a production error.
+Version floors worth knowing, since the failure is a runtime error from the server rather than anything this library can catch: `trim_array` is Postgres 14, `array_shuffle` and `array_sample` are 16, and `array_sort` and `array_reverse` are 18. Both `ArraySort` and `ArraySortDesc` require 18; the constructor shape does not lower that version floor. [postgres arrays](ds:block?id=postgres-arrays-5w7ytu86&assert=true)
 
 ```go
 sqlb.NewSelect(d).Exprs(pg.ArraySortDesc(Tags, true)).From(Docs)

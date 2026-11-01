@@ -1,0 +1,12 @@
+{
+  "_table": "architecture_notes",
+  "_v": 1,
+  "body": "Caller-owned typed columns and predicates enter a statement builder. Build walks SQLer nodes using one Args, preserving traversal order between placeholders and argument values. Dialect spelling and engine guards run during rendering. Build collects matching binding Targets only after successful rendering. exec queries through DBTX and scans into those targets; scan instead appends Reader columns and allocates its own destinations for each row. This explains why projection order, parameter order and destination ownership are correctness invariants, rather than formatting details.\n\nEvidence: ds:block?id=column-declaration-gthk6bb2; ds:block?id=select-build-h68d49p3; ds:block?id=parameter-flow-pdh445xg; ds:block?id=dialect-failure-zqdgvzs3; ds:block?id=bound-one-x39s9kka; ds:block?id=reader-flow-xcq2taqt; ds:block?id=reader-composition-ymehc5ss. See docs/architecture.md and docs/operating-notes.md. Verified from the implementation and tests on 2026-11-01; server-test gates are explicitly distinguished from execution.",
+  "created_at": "2026-11-01T18:56:18.495285000Z",
+  "created_by_actor_id": "act_44e6f0f93d1174d1b1ad4c8d46b37885",
+  "id": "anr_01a198783a3f745da5c7cc263c4d68ba",
+  "project_id": "prj_01a198235aec7338a4c679214eeabefb",
+  "repo_id": "rep_814705e241747bc4a7ef20b6d32f7fd7",
+  "title": "Build to render to scan data flow",
+  "updated_at": "2026-11-01T18:56:18.495286000Z"
+}

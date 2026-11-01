@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/ubgo/sqlb/dialect/clickhouse"
+	"github.com/ubgo/sqlb/dialect/mysql"
 	"github.com/ubgo/sqlb/dialect/postgres"
 	"github.com/ubgo/sqlb/dialect/sqlite"
 	"github.com/ubgo/sqlb/render"
@@ -73,16 +74,19 @@ func isStdlib(path string) bool {
 // TestDialects_SatisfyRenderDialect pins that each is usable as the interface
 // without help from the core, which is what lets one be swapped for a
 // community package's dialect at a call site.
+// ds:def id=dialect-matrix-efpaw6ht
 func TestDialects_SatisfyRenderDialect(t *testing.T) {
 	cases := []struct {
 		d            render.Dialect
 		name         string
 		placeholder1 string
 		quoted       string
+		returning    bool
 	}{
-		{postgres.Dialect{}, "postgres", "$1", `"id"`},
-		{sqlite.Dialect{}, "sqlite", "?", `"id"`},
-		{clickhouse.Dialect{}, "clickhouse", "?", "`id`"},
+		{postgres.Dialect{}, "postgres", "$1", `"id"`, true},
+		{sqlite.Dialect{}, "sqlite", "?", `"id"`, true},
+		{mysql.Dialect{}, "mysql", "?", "`id`", false},
+		{clickhouse.Dialect{}, "clickhouse", "?", "`id`", false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -94,6 +98,10 @@ func TestDialects_SatisfyRenderDialect(t *testing.T) {
 			}
 			if got := c.d.QuoteIdent("id"); got != c.quoted {
 				t.Errorf("QuoteIdent = %q, want %q", got, c.quoted)
+			}
+			r, ok := c.d.(render.Returning)
+			if got := ok && r.SupportsReturning(); got != c.returning {
+				t.Errorf("RETURNING = %v, want %v", got, c.returning)
 			}
 		})
 	}
