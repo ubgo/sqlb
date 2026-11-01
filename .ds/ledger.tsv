@@ -1,4 +1,4 @@
-# docsync ledger format=2 extract=1 repo=sqlb commit=a3272d5 scanned_at=2026-11-01T17:56:23Z
+# docsync ledger format=2 extract=1 repo=sqlb commit=1b4b6ce scanned_at=2026-11-01T18:00:45Z
 id	repo	kind	file	symbol	lines	hash	owner	stability	env	args
 bound-values-3t7cnq5d	sqlb	func	promises_test.go	TestPromise_BoundValuesStayOutOfSQL	28-64	2f7e467a880d02c2a94f989df0fd66ff6550fb465eabca8de2f6e7f8c98db412		stable		id=bound-values-3t7cnq5d
 build-failure-pwec46e6	sqlb	func	promises_test.go	TestPromise_ValidationReturnsNoPartialQuery	70-78	5fbe6bb03ec730b37b27e40e6179a18b781cc888e74d3d9bb91c28951a6bf911		stable		id=build-failure-pwec46e6
