@@ -16,6 +16,7 @@ import (
 // of the same construct, and checks the findings against the "want" marks in
 // the probe's source: one finding per mark, none elsewhere. The marks are
 // read from the file, so adding a line to the probe does not move the test.
+// promise:vet-source-checks
 func TestStatic_ReportsEachMistakeOnceAndTheRightUsesNever(t *testing.T) {
 	src, err := os.ReadFile("internal/probe/static/static.go")
 	if err != nil {

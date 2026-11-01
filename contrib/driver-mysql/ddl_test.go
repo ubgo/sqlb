@@ -59,6 +59,7 @@ func cleanup(t *testing.T, db *sql.DB, qs ...string) {
 // id, the case-insensitive default collation and a binary one differ on the
 // unique email, the generated column computes, the CHECK and OneOf refuse,
 // the foreign key cascades, and the table options are recorded.
+// promise:mysql-ddl-live
 func TestDDL_MySQLTablesAndKeysHold(t *testing.T) {
 	db := openOrSkip(t)
 	ctx := context.Background()

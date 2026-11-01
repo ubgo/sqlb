@@ -99,6 +99,7 @@ func TestWithRecursive_SeedKeepsItsOwnLimit(t *testing.T) {
 // TestWithRecursive_UnscopedSeedIsNotParenthesised keeps the fix from adding
 // noise to the ordinary case, which is the shape almost every recursive CTE
 // has.
+// promise:recursive-bare
 func TestWithRecursive_UnscopedSeedIsNotParenthesised(t *testing.T) {
 	seed, step := seedAndStep()
 

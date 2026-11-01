@@ -57,6 +57,7 @@ var teardownDDL = []string{
 
 // TestConformance runs the shared suite against a real Postgres, which is
 // the second engine the builder's rendering is proven on rather than asserted.
+// promise:conformance-reset
 func TestConformance(t *testing.T) {
 	db := openOrSkip(t)
 	cfg := sqlbtest.Config{

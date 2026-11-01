@@ -13,6 +13,7 @@ import (
 // caller who reaches for a zero value on purpose, and Build still refuses it
 // with the errors the builders used to return. The hole is documented rather
 // than closed, exactly as the Query literal's missing guard is.
+// promise:literal-typestate
 func TestTypestate_LiteralHoleIsRejectedAtBuild(t *testing.T) {
 	tbl := Table{Name: "t", Alias: "t"}
 

@@ -196,7 +196,8 @@ func DefaultOnError(sql string) JSONValueOption {
 	return func(s *jsonValueSpec) { s.defaultOnError = sql }
 }
 
-// WithWrapper wraps the result in an array always.
+// WithWrapper wraps a matched result in an array. Empty and error cases use
+// the configured JSON_QUERY handling.
 //
 // The three wrapper options decide what JSON_QUERY does when a path matches
 // more or fewer than one value. Without a wrapper, multiple matches raise.

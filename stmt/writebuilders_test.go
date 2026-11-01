@@ -187,6 +187,7 @@ func (b colBinding) ColumnName() string      { return b.col.Name() }
 // SupportsReturning method out at compile time; a dialect that has the method
 // and answers false gets ErrNoReturning at Build rather than a statement whose
 // RETURNING the server rejects.
+// promise:capability-interfaces
 func TestReturning_RefusesADialectThatSaysItHasNone(t *testing.T) {
 	var got string
 	ins := stmt.NewInsert(halfHearted{}).Into(people).Row(stmt.Set(personID, "a"))

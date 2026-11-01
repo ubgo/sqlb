@@ -29,6 +29,7 @@ var foldCol = expr.Col[string](expr.Table{Name: "user", Alias: "u"}, "email")
 // that can take it. The pattern forms are the only ones whose spelling
 // changes, and only on the dialect declaring ILIKE; the bound value is the
 // same on every engine, which is what makes the answers comparable.
+// promise:fold-at-engine
 func TestFold_RendersPerDialect(t *testing.T) {
 	type want struct {
 		sql  string

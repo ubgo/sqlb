@@ -125,6 +125,7 @@ func TestPragma_ChecksReportByReturningRows(t *testing.T) {
 // TestPragma_RefusesWhatSQLiteWouldIgnore is the point of the typed
 // constructors: SQLite accepts a page size it will not use and a value outside
 // a closed set, and changes nothing. Build refuses both.
+// promise:sqlite-page-size
 func TestPragma_RefusesWhatSQLiteWouldIgnore(t *testing.T) {
 	cases := []struct {
 		name  string

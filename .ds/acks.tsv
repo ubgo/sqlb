@@ -1,0 +1,2 @@
+# docsync acks format=3 extract=1 repo=sqlb-lore-docsync-promises commit=a3272d5 scanned_at=2026-11-01T17:23:25Z
+at	actor	actor_kind	delegated_by	id	repo	doc	line	env	block_hash	sentence_hash	note	rule	sentence

@@ -129,7 +129,7 @@ Releases are cut with [volt](https://github.com/ubgo/voltkit/tree/main/apps/volt
 
 <!-- BEGIN GENERATED TASKS -->
 
-Generated from `Taskfile.yml` by `python3 scripts/gen-commands-doc.py`; `task docs:commands` fails when it is stale. 50 tasks.
+Generated from `Taskfile.yml` by `python3 scripts/gen-commands-doc.py`; `task docs:commands` fails when it is stale. 54 tasks.
 
 `MODULES` is `. contrib/driver-sqlite contrib/driver-pgx contrib/driver-mysql contrib/vet contrib/migrate contrib/debug contrib/structbind`; a task that says *for each MODULE* runs its step in each of those directories.
 
@@ -144,6 +144,8 @@ task zerodep
 task reuse:check
 task tasks:check
 task docs:check
+task promises:check
+task docsync:check
 ```
 
 ### `task check:modules`
@@ -299,6 +301,14 @@ FAIL if a per-package page's Setup block does not compile
 python3 scripts/check-doc-setup.py
 ```
 
+### `task docsync:check`
+
+Check documentation references against their defined blocks
+
+```sh
+ds --no-update check --frozen
+```
+
 ### `task engines:mysql:down`
 
 Stop the scratch MySQL container, which --rm then removes with its data
@@ -394,12 +404,31 @@ Format every Go file
 gofmt -w .
 ```
 
+### `task knowledge:setup`
+
+Hydrate Lore and scan documentation after cloning (requires lore and ds)
+
+```sh
+lore setup
+task lore:render
+ds --no-update scan
+```
+
 ### `task lint`
 
 Run golangci-lint in every module
 
 ```sh
 task module:lint
+```
+
+### `task lore:render`
+
+Refresh shared Lore context for Claude Code and Codex
+
+```sh
+lore render
+lore render --target=AGENTS.md
 ```
 
 ### `task module:check` (internal)
@@ -479,6 +508,15 @@ echo "--- {{.DIR}}"
 sh {{if eq .DIR "."}}scripts{{else}}../../scripts{{end}}/uncovered.sh cover.out
 ```
 
+### `task promises:check`
+
+Check every documented promise against its inventory and named test
+
+```sh
+python3 scripts/check-promises.py
+python3 -m unittest discover -s scripts -p 'test_spec_promises.py'
+```
+
 ### `task reuse:check`
 
 FAIL if a function taking a statement is not covered by the reuse test
@@ -554,12 +592,8 @@ Variables, each overridable on the command line as `task test:mysql NAME=value`:
 
 - `MYSQL_DSN`, default `root:sqlb@tcp(127.0.0.1:33069)/sqlb`
 
-Environment it sets for its commands:
-
-- `SQLB_MYSQL_DSN`, set from `MYSQL_DSN`
-
 ```sh
-go test -race -count=1 ./contrib/driver-mysql/... ./contrib/vet/... ./contrib/migrate/...
+SQLB_MYSQL_DSN='{{.MYSQL_DSN}}' go test -race -count=1 ./contrib/driver-mysql/... ./contrib/vet/... ./contrib/migrate/...
 ```
 
 ### `task test:pg`
@@ -570,12 +604,8 @@ Variables, each overridable on the command line as `task test:pg NAME=value`:
 
 - `PG_DSN`, default `postgres:///sqlb_scratch?sslmode=disable`
 
-Environment it sets for its commands:
-
-- `SQLB_PG_DSN`, set from `PG_DSN`
-
 ```sh
-go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/...
+SQLB_PG_DSN='{{.PG_DSN}}' go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/...
 ```
 
 ### `task test:pg18`
@@ -586,12 +616,8 @@ Variables, each overridable on the command line as `task test:pg18 NAME=value`:
 
 - `PG18_DSN`, default `postgres://postgres:sqlb@127.0.0.1:54318/postgres?sslmode=disable`
 
-Environment it sets for its commands:
-
-- `SQLB_PG_DSN`, set from `PG18_DSN`
-
 ```sh
-go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/...
+SQLB_PG_DSN='{{.PG18_DSN}}' go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/...
 ```
 
 ### `task test:race`

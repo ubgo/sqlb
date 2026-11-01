@@ -78,6 +78,7 @@ func TestReadCatalogue_SQLiteKeyNullabilityIsTheEngines(t *testing.T) {
 // TestReadCatalogue_KeysTheDefaultSchemaBothWays pins the Catalogue key
 // convention on SQLite, whose one schema is main: a table is found by its
 // bare name and by main.name.
+// promise:vet-schema-qualified
 func TestReadCatalogue_KeysTheDefaultSchemaBothWays(t *testing.T) {
 	ctx := context.Background()
 	db := memorySQLite(t)
@@ -139,6 +140,7 @@ func TestCompareTables_EdgeCases(t *testing.T) {
 // TestCompare_LooksUpTheDeclaredSchema pins the same key for Col[T]
 // declarations: a column declared on auth.users is compared with auth.users,
 // not with a same-named table in the default schema.
+// promise:vet-schema-qualified
 func TestCompare_LooksUpTheDeclaredSchema(t *testing.T) {
 	cat := vet.Catalogue{
 		"auth.users": {"id": {Type: "bigint"}},

@@ -58,6 +58,7 @@ func fileDB(t *testing.T) *sql.DB {
 // end: two packages' CREATE TABLE statements, contributed in the wrong order,
 // are ordered by the foreign key Install reads from their own descriptions,
 // executed twice, and the reference holds on a real database.
+// promise:schema-composition
 func TestInstall_OrdersAcrossContributorsAndRuns(t *testing.T) {
 	ctx := context.Background()
 	s, err := migrate.Install(application(), library())
@@ -82,6 +83,8 @@ func TestInstall_OrdersAcrossContributorsAndRuns(t *testing.T) {
 }
 
 // TestInstall_RefusesWhatAWholeDatabaseCannotHave pins the two refusals.
+// promise:schema-duplicate
+// promise:schema-missing
 func TestInstall_RefusesWhatAWholeDatabaseCannotHave(t *testing.T) {
 	if _, err := migrate.Install(library(), library()); !errors.Is(err, schema.ErrDuplicateTable) {
 		t.Errorf("a table two contributors create: %v", err)
@@ -95,6 +98,7 @@ func TestInstall_RefusesWhatAWholeDatabaseCannotHave(t *testing.T) {
 // refuses inside a transaction: the script succeeds only if Execute commits
 // the statements before it, runs it on its own, and opens a new transaction
 // for the ones after.
+// promise:nontransactional-index
 func TestExecute_RunsANonTransactionalStatementAlone(t *testing.T) {
 	ctx := context.Background()
 	db := fileDB(t)

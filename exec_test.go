@@ -313,6 +313,7 @@ func TestEach_ScanError(t *testing.T) {
 // One and Each refuse the overlap instead. A lock would be worse: it would
 // serialise the executions and hand the second caller the first caller's rows
 // in its own variables, silently.
+// promise:query-overlap
 func TestQuery_RefusesOverlappingExecution(t *testing.T) {
 	var got string
 	q := selectQuery(t, &got)
@@ -375,6 +376,7 @@ func TestQuery_TwoBuildsFromOneBuilderShareTheGuard(t *testing.T) {
 // A Query assembled as a struct literal carries no guard, and gets no check.
 // This is pinned so the limit is a known one rather than a surprise: the
 // check is a best effort, not a guarantee.
+// promise:literal-query-unguarded
 func TestQuery_LiteralHasNoGuard(t *testing.T) {
 	var got string
 	built := selectQuery(t, &got)

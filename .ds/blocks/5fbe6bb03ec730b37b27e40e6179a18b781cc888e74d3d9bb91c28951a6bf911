@@ -1,0 +1,9 @@
+func TestPromise_ValidationReturnsNoPartialQuery(t *testing.T) {
+	q, err := sqlb.NewSelect(sqlite.Dialect{}).From(sqlb.Table{Name: "promise_values"}).Build()
+	if !errors.Is(err, sqlb.ErrNoColumns) {
+		t.Fatalf("got %v, want ErrNoColumns", err)
+	}
+	if q.SQL != "" || len(q.Args) != 0 || len(q.Targets) != 0 {
+		t.Fatalf("partial query escaped failure: %#v", q)
+	}
+}

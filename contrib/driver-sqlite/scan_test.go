@@ -97,6 +97,7 @@ func TestScan_OneReportsNoRows(t *testing.T) {
 
 // TestScan_EmptyReaderIsRejected keeps an always-wrong statement from reaching
 // the database, where it would come back as a syntax error naming nothing.
+// promise:scan-no-columns
 func TestScan_EmptyReaderIsRejected(t *testing.T) {
 	_, err := scan.All(context.Background(), seeded(t, ""), byAge(), scan.Reader[int]{})
 	if !errors.Is(err, scan.ErrNoColumns) {
@@ -112,6 +113,7 @@ func TestScan_EmptyReaderIsRejected(t *testing.T) {
 // executions and every one must see its own correct rows. Under -race this is
 // the difference between the two strategies stated as a test rather than as a
 // paragraph.
+// promise:scan-concurrency
 func TestScan_OneReaderIsSafeToShare(t *testing.T) {
 	db := seeded(t, "file:sharedreader?mode=memory&cache=shared")
 	ctx := context.Background()

@@ -19,6 +19,7 @@ const allowedImport = "github.com/ubgo/sqlb/render"
 // TestExpr_ImportsOnlyRender is the layering rule as a test rather than as a
 // convention. Every layer compiles and is useful without anything above it, and
 // the cheapest way for that to stop being true is an innocent-looking import.
+// promise:expr-boundary
 func TestExpr_ImportsOnlyRender(t *testing.T) {
 	pkg, err := build.ImportDir(".", 0)
 	if err != nil {
@@ -89,6 +90,7 @@ func TestUpper_Renders(t *testing.T) {
 // placeholder argument is cast, and only for a dialect implementing
 // render.UntypedParameters: Postgres casts, SQLite does not, and a column is
 // never cast on either.
+// promise:concat-param-type
 func TestConcat_TypesABareParameterWhereTheDialectAsks(t *testing.T) {
 	email := expr.Col[string](expr.Table{Name: "u"}, "email")
 	c := expr.Concat(email, expr.Param("!"), expr.Lower(expr.Param("X")))

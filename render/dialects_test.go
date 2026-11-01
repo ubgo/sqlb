@@ -42,6 +42,7 @@ func (oracleDialect) Name() string               { return "oracle" }
 // TestOutsideDialects_DriveTheRenderLayer pins that the three placeholder
 // styles in common use all work: positional markers with no number, numbered
 // markers with a prefix, and numbered markers with a different prefix.
+// promise:outside-dialect
 func TestOutsideDialects_DriveTheRenderLayer(t *testing.T) {
 	for _, c := range []struct {
 		d      render.Dialect

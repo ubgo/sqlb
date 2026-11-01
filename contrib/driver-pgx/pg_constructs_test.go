@@ -199,6 +199,7 @@ func catalogue(t *testing.T) *sql.DB {
 	return db
 }
 
+// promise:pg-live
 func TestPGConstructs_Execute(t *testing.T) {
 	db := catalogue(t)
 

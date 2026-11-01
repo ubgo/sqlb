@@ -186,6 +186,7 @@ func (outsideDialect) Name() string               { return "outside" }
 // a bound LIMIT, rendered by a dialect the library has never heard of. If any
 // part of the renderer ever branches on a known dialect name, this is what
 // notices.
+// promise:outside-dialect
 func TestOutsideDialect_DrivesTheWholeBuilder(t *testing.T) {
 	q, err := stmt.NewSelect(outsideDialect{}).
 		Exprs(personID, salary).

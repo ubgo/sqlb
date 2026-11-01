@@ -201,6 +201,7 @@ func csCases() []csCase {
 // Both halves run at every site, because either one alone proves nothing: a
 // validation that refuses everything passes the first, and no validation at
 // all passes the second.
+// promise:pg-closed-sets
 func TestClosedSets_EverySiteRefusesAHostileValueAndTakesARealOne(t *testing.T) {
 	for _, c := range csCases() {
 		t.Run(c.name, func(t *testing.T) {
@@ -298,6 +299,8 @@ func TestClosedSets_EveryConstantBuilds(t *testing.T) {
 // makes them safe is the dialect's identifier quoting. A hostile value builds
 // and comes out as one quoted identifier that does not exist, which is the
 // server's problem rather than an injection.
+// promise:pg-open-identifiers
+// promise:pg-storage-quoting
 func TestClosedSets_OpenTypesAreQuotedRatherThanValidated(t *testing.T) {
 	hostile := `heap"; DROP TABLE users; --`
 	quoted := `"heap""; DROP TABLE users; --"`

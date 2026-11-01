@@ -22,6 +22,7 @@ var allowed = map[string]bool{
 // Every layer compiles and is useful without anything above it, and an import
 // pointing the wrong way is the cheapest way for that to quietly stop being
 // true.
+// promise:stmt-boundary
 func TestStmt_ImportsOnlyTheLayersBelow(t *testing.T) {
 	pkg, err := build.ImportDir(".", 0)
 	if err != nil {
@@ -38,6 +39,7 @@ func TestStmt_ImportsOnlyTheLayersBelow(t *testing.T) {
 // A statement renders to a string and a slice of values with no scan target
 // anywhere, which is what makes a Query safe to share and a second result
 // strategy possible without forking this package.
+// promise:stmt-boundary
 func TestStmt_BuildsWithoutAResultStrategy(t *testing.T) {
 	users := expr.Table{Name: "app_user", Alias: "u"}
 	email := expr.Col[string](users, "email")
@@ -86,6 +88,7 @@ func TestQuery_GuardIsReachableFromAbove(t *testing.T) {
 // it is closed. A struct-literal Query carries no guard, so it is always
 // allowed to proceed. The guard detects the overlap it can see; it does not
 // prevent the hazard, and a doc that claimed otherwise would be worse than none.
+// promise:literal-query-unguarded
 func TestQuery_LiteralHasNoGuard(t *testing.T) {
 	q := stmt.Query{SQL: "SELECT 1"}
 	for i := range 3 {

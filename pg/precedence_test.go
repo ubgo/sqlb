@@ -1,6 +1,7 @@
 package pg_test
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -79,17 +80,22 @@ func TestEngineOperators_NestInsideCoreOperators(t *testing.T) {
 // on ClickHouse, which spells them bitAnd(), would fail at the database rather
 // than at Build. Three of four engines agreeing is not the rule the core lives
 // by.
+// promise:render-errors
+// ds:def id=dialect-failure-zqdgvzs3
 func TestBitwise_FailsUnderAnotherDialect(t *testing.T) {
 	tbl := sqlb.Table{Name: "flags", Alias: "f"}
 	tag := sqlb.Col[int](tbl, "tag")
 
-	_, err := sqlb.NewSelect(sqlb.SQLiteDialect{}).
+	q, err := sqlb.NewSelect(sqlb.SQLiteDialect{}).
 		Exprs(pg.BitAnd(tag, sqlb.Param(16))).
 		From(tbl).
 		Build()
 
-	if err == nil {
-		t.Fatal("a Postgres-only operator rendered under SQLite")
+	if !errors.Is(err, sqlb.ErrUnsupportedDialect) {
+		t.Fatalf("got %v, want ErrUnsupportedDialect", err)
+	}
+	if q.SQL != "" || len(q.Args) != 0 || len(q.Targets) != 0 {
+		t.Fatalf("partial query escaped failure: %#v", q)
 	}
 	if !strings.Contains(err.Error(), "sqlite") {
 		t.Errorf("the error should name the dialect it failed under: %v", err)

@@ -18,6 +18,7 @@ import (
 var arch = sqlb.Table{Name: "arch", Alias: "a"}
 
 // TestForms_Render pins the text of each.
+// promise:mysql-create-as
 func TestForms_Render(t *testing.T) {
 	for name, tc := range map[string]struct {
 		b    interface{ Build() (ddl.Script, error) }
@@ -363,6 +364,7 @@ func TestForms_SkipIfMethodsDerive(t *testing.T) {
 // the first half and breaks the package, so every real constant is built
 // here too and must succeed. Verified by making each valid() return true
 // unconditionally and watching the refusals fail.
+// promise:mysql-closed-sets
 func TestClosedStringSets_RefuseAHostileValue(t *testing.T) {
 	const hostile = "BTREE; DROP TABLE items; -- "
 	con := mysql.TableConstraint{Table: items, Name: "c"}
@@ -472,6 +474,7 @@ func TestClosedStringSets_RefuseAHostileValue(t *testing.T) {
 // the last before the closer. Both halves are MySQL 8.4's, measured through
 // the driver — "IF c THEN; ..." and "... SET x = 1 END IF" are each
 // ER_PARSE_ERROR — and contrib/driver-mysql executes what these render.
+// promise:mysql-routine-body
 func TestStepBlock_SeparatorRuleIsTheServers(t *testing.T) {
 	trig := func(step mysql.TriggerStep, more ...mysql.TriggerStep) interface {
 		Build() (ddl.Script, error)

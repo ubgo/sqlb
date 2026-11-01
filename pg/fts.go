@@ -54,8 +54,9 @@ func ToTSVector(config string, e sqlb.Expr[string]) sqlb.Expr[TSVector] {
 	return fn[TSVector](constructFTS, fnToTSVector, quoteLit(config), e)
 }
 
-// WebsearchToTSQuery is the safe form for user input: it never raises a
-// syntax error. ToTSQuery can, and the doc on it says so.
+// WebsearchToTSQuery accepts malformed search-query text without a query-syntax
+// error. The text-search configuration still has to exist. ToTSQuery can
+// reject malformed query text.
 func WebsearchToTSQuery(config, text string) sqlb.Expr[TSQuery] {
 	return fn[TSQuery](constructFTS, fnWebsearchToTSQ, quoteLit(config), sqlb.Param(text))
 }

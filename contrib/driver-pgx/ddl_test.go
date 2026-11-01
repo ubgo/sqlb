@@ -235,6 +235,8 @@ func failsAt(t *testing.T, tx *sql.Tx, q string, args ...any) bool {
 // has Postgres enforce every clause: the identity refuses an explicit id, the
 // generated column is computed, the composite unique key and NULLS NOT
 // DISTINCT collide, the CHECK refuses, and the cascade removes sessions.
+// promise:pg-ddl-live
+// promise:pg-identity-live
 func TestDDL_PostgresKeysAndGeneratedColumnsHold(t *testing.T) {
 	inTx(t, func(tx *sql.Tx) {
 		ctx := context.Background()
@@ -664,6 +666,7 @@ func TestDDL_PostgresSchemasEnumsIndexesAndComments(t *testing.T) {
 // TestDDL_PostgresConcurrentIndexOutsideATransaction runs the two statements
 // marked non-transactional the only way Postgres accepts them, and checks that
 // inside a transaction it refuses, which is what the flag claims.
+// promise:nontransactional-index
 func TestDDL_PostgresConcurrentIndexOutsideATransaction(t *testing.T) {
 	db := openOrSkip(t)
 	ctx := context.Background()
@@ -773,6 +776,7 @@ type vInvoiceNo int32
 // view over a query-builder body whose bound values became literals, a check
 // option that refuses a write, and a materialized view refreshed concurrently
 // through a unique index, all read back from the server.
+// promise:pg-ddl-live
 func TestDDL_PostgresSequencesAndViews(t *testing.T) {
 	inTx(t, func(tx *sql.Tx) {
 		ctx := context.Background()
@@ -844,6 +848,7 @@ func TestDDL_PostgresSequencesAndViews(t *testing.T) {
 // trigger that maintains updated_at only when the email changes, then a range
 // partitioned table whose rows Postgres routes by the bound, a partition
 // attached and detached, and reads each effect back.
+// promise:pg-ddl-live
 func TestDDL_PostgresTriggersAndPartitions(t *testing.T) {
 	inTx(t, func(tx *sql.Tx) {
 		ctx := context.Background()

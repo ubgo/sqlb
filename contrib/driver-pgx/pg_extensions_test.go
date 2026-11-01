@@ -111,6 +111,7 @@ func xPred(t *testing.T, db *sql.DB, name string, p sqlb.Predicate) {
 
 // TestPGExtensions_Execute executes every construct in the eight extension
 // sub-packages.
+// promise:pg-live
 func TestPGExtensions_Execute(t *testing.T) {
 	db := extCatalogue(t)
 

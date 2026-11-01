@@ -37,6 +37,7 @@ func TestNew_DefaultsToSnake(t *testing.T) {
 // struct depends on
 // mutable state elsewhere in the process. Two mappings of the same struct
 // disagreeing here is the property that makes that impossible.
+// promise:structbind-namer
 func TestNew_NamerIsChosenPerMapping(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -68,6 +69,7 @@ func TestNew_NamerIsChosenPerMapping(t *testing.T) {
 // A tag is what somebody wrote down deliberately, so no Namer may override it.
 // Asserting it once per namer rather than once is the point: a namer that
 // happened to be applied to the tag would pass a single-case test.
+// promise:structbind-tag
 func TestNew_TagAlwaysBeatsTheNamer(t *testing.T) {
 	for _, n := range []structbind.Namer{
 		structbind.Snake, structbind.Camel, structbind.Pascal,
@@ -175,6 +177,7 @@ func TestNew_DuplicateDependsOnTheNamer(t *testing.T) {
 // TestNew_EmptyColumnFromACustomNamer pins the one way a column name can come
 // out empty, which would otherwise render "u"."" and fail at the engine with an
 // error pointing nowhere near the cause.
+// promise:structbind-empty
 func TestNew_EmptyColumnFromACustomNamer(t *testing.T) {
 	_, err := structbind.New[namedUser](tbl, func(string) string { return "" })
 	if !errors.Is(err, structbind.ErrEmptyColumn) {

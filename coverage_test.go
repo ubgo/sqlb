@@ -168,6 +168,7 @@ func TestInsert_With(t *testing.T) {
 // that catching is most of what this package sells. An arm that stops firing
 // does not announce itself; the statement simply builds, and the database
 // reports something less specific much later.
+// promise:insert-row-width
 func TestWriteBuilders_FailClosed(t *testing.T) {
 	// A row whose width does not match the column list. The builder cannot
 	// know which value was meant for which column, so it refuses rather than

@@ -88,6 +88,7 @@ func TestSelect_TargetsMatchColumnOrder(t *testing.T) {
 	}
 }
 
+// promise:cross-package
 func TestSelect_JoinRendersOnClause(t *testing.T) {
 	var d dest
 	q := buildOK(t, sqlb.NewSelect(sqlb.PostgresDialect{}).
@@ -190,6 +191,7 @@ func TestIn_BindsEveryValue(t *testing.T) {
 
 // TestGroup_AlwaysParenthesised guards against a precedence bug where an OR
 // nested inside an AND silently widens a security check.
+// promise:group-parentheses
 func TestGroup_AlwaysParenthesised(t *testing.T) {
 	var d dest
 	q := buildOK(t, sqlb.NewSelect(sqlb.PostgresDialect{}).

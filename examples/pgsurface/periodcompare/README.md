@@ -64,7 +64,7 @@ Each decision, and the hack it removes:
 - **Same-table periods are `FILTER` aggregates on one scan.** The sales table is read once over the widest date span; each period is a filter on the aggregate.
 - **A disabled source is not joined, and its measures are typed zeros chosen once, in the report CTE.** A ratio whose denominator would come from a disabled source is `NULL`, not a number computed over a zero that looks like data.
 - **Computed metrics are columns of the `report` CTE.** The outer query filters and sorts on them with plain `WHERE` and `ORDER BY`, by column name from a closed vocabulary.
-- **The total count is `count(*) OVER ()` in the same statement.** One round trip, and the count always agrees with the page.
+- **The total count is `count(*) OVER ()` in the same statement.** One round trip; each returned row carries the total for the filtered result before pagination. An empty page returns no row from which to read a total.
 - **The fiscal-month key is the period index, not the label.** The same period of three years lands on one row without an offset trick; a `labels` CTE attaches the current year's label at the end.
 - **A filter that a source cannot honour is reported, not skipped.** `Result.SkippedFilters` names it, and `Result.DisabledSources` names every source that is out.
 

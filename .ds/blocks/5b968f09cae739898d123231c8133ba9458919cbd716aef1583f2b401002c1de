@@ -1,0 +1,25 @@
+func TestPromise_ValidationReturnsNoPartialQuery(t *testing.T) {
+	table := sqlb.Table{Name: "promise_values"}
+	col := sqlb.Col[string](table, "value")
+	for name, tc := range map[string]struct {
+		build func() (sqlb.Query, error)
+		want  error
+	}{
+		"no columns": {func() (sqlb.Query, error) {
+			return sqlb.NewSelect(sqlite.Dialect{}).From(table).Build()
+		}, sqlb.ErrNoColumns},
+		"wrong engine": {func() (sqlb.Query, error) {
+			return sqlb.NewSelect(sqlite.Dialect{}).Exprs(col).From(table).Where(pg.ILike(col, "x")).Build()
+		}, sqlb.ErrUnsupportedDialect},
+	} {
+		t.Run(name, func(t *testing.T) {
+			q, err := tc.build()
+			if !errors.Is(err, tc.want) {
+				t.Fatalf("got %v, want %v", err, tc.want)
+			}
+			if q.SQL != "" || len(q.Args) != 0 || len(q.Targets) != 0 {
+				t.Fatalf("partial query escaped failure: %#v", q)
+			}
+		})
+	}
+}

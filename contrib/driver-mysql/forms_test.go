@@ -22,6 +22,7 @@ import (
 // worth having: a temporary table hides a permanent one of the same name, and
 // DROP TABLE would remove the temporary while looking like it removed the
 // permanent one.
+// promise:mysql-create-as
 func TestDDL_MySQLTemporaryTables(t *testing.T) {
 	db := openOrSkip(t)
 	ctx := context.Background()
@@ -172,6 +173,7 @@ func TestDDL_MySQLIndexOptions(t *testing.T) {
 // TestDDL_MySQLColumnFormsAndSwap covers the column forms and the atomic
 // rename. The swap is the case that cannot be done any other way: two
 // statements leave an instant in which the live name does not exist.
+// promise:mysql-ddl-live
 func TestDDL_MySQLColumnFormsAndSwap(t *testing.T) {
 	db := openOrSkip(t)
 	cleanup(t, db, "DROP TABLE IF EXISTS f_col", "DROP TABLE IF EXISTS f_old", "DROP TABLE IF EXISTS f_next")
@@ -381,6 +383,7 @@ func showCreateView(t *testing.T, db *sql.DB, name string) string {
 // both halves — the guarded path taken and not taken — because a block whose
 // condition never matches renders and executes exactly as well as one that
 // works.
+// promise:mysql-routine-body
 func TestDDL_MySQLStepBlockExecutes(t *testing.T) {
 	db := openOrSkip(t)
 	cleanup(t, db, "DROP TABLE IF EXISTS f_blk")

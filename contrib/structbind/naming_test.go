@@ -13,6 +13,7 @@ import (
 // plural s belongs to the run before it, and both rules are here because the
 // naive "underscore before every capital" gives h_t_t_p_status and ur_ls, which
 // no schema has ever contained.
+// promise:structbind-empty
 func TestNamers(t *testing.T) {
 	for _, tc := range []struct {
 		field, snake, camel, pascal, lower string

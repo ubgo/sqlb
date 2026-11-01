@@ -28,7 +28,7 @@ A builder asks with a type assertion, so a dialect that lacks a capability is ne
 
 `Args` accumulates the bound values while a statement renders. It carries the dialect, so an expression can bind a parameter at render time rather than only at construction. That is what makes a JSON path with a bound key, a vector distance with a bound vector, or a `date_trunc` with a bound unit expressible at all.
 
-It also carries the first error. `Unsupported` records a construct the dialect cannot render, `Fail` records anything else, and `Build` returns whichever came first. Rendering never panics and never produces half a statement.
+It also carries the first error. `Unsupported` records a construct the dialect cannot render, `Fail` records anything else, and `Build` returns whichever came first. Built-in validation returns an error rather than a partial query. This is not a panic recovery boundary: caller-supplied dialects and render callbacks remain responsible for their own behavior.
 
 ## Failing closed
 
@@ -53,7 +53,7 @@ Engine **clauses** do not get that far. A clause is typed to its dialect and its
 
 ## Adding a dialect from another repository
 
-A community package can ship a complete engine: a dialect, its constructs, and a driver. Nothing in this module is privileged, no list here needs editing, and the engine name is a plain string rather than a member of a closed set. The constants in `dialect.go` name the three engines this repository ships; the core never branches on them, and `DialectName` asks the `Named` interface, so any name works.
+A community package can ship a complete engine: a dialect, its constructs, and a driver. Nothing in this module is privileged, no list here needs editing, and the engine name is a plain string rather than a member of a closed set. The constants in `render/render.go` name the engines this repository ships; the core never branches on them, and `DialectName` asks the `Named` interface, so any name works.
 
 `engine_test.go` in the core is the proof. It builds a DuckDB engine in package `sqlb_test`, which can reach nothing unexported, so whatever it does is what an outside package can do.
 

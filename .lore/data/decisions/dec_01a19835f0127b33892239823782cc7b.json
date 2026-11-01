@@ -1,0 +1,20 @@
+{
+  "_table": "decisions",
+  "_v": 1,
+  "archived_at": null,
+  "body": "Use Lore for shared project rules and decisions, Docsync for block-to-document freshness, and the satl-spec-promises gate for a reviewed public promise inventory. Both Claude Code and Codex read the same AGENTS instructions and generated Lore context. This follows the requested shared workflow without duplicating separate agent knowledge. Start Docsync coverage at the new promise and validation boundaries, then extend with edited pages; the initial integration does not claim to cover all existing documentation.",
+  "confidence": null,
+  "created_at": "2026-11-01T17:43:54.130732000Z",
+  "created_by_actor_id": "act_44e6f0f93d1174d1b1ad4c8d46b37885",
+  "id": "dec_01a19835f0127b33892239823782cc7b",
+  "last_validated_at": null,
+  "project_id": "prj_01a198235aec7338a4c679214eeabefb",
+  "repo_id": null,
+  "source_kind": "manual",
+  "source_ref": "Repository workflow setup request",
+  "status": "accepted",
+  "superseded_by_id": null,
+  "title": "Share context and bind documented promises to executable checks",
+  "trust_score": 0.5,
+  "updated_at": "2026-11-01T17:43:54.130732000Z"
+}

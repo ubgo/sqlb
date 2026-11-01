@@ -12,6 +12,8 @@ import (
 
 // TestZeroValues_AreRefused builds the zero value of every exported mysql type
 // and fails on a panic or a clean build; see sqlbtest.ZeroValues.
+// promise:mysql-incomplete
+// promise:zero-values
 func TestZeroValues_AreRefused(t *testing.T) {
 	sqlbtest.ZeroValues(t, sqlbtest.ZeroConfig{
 		Dir:     ".",

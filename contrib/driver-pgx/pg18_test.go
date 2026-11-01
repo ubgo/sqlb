@@ -28,6 +28,7 @@ func refused(t *testing.T, tx *sql.Tx, q string) bool {
 // a period its target does not cover, an unenforced check accepting a row it
 // would refuse and then enforced, and ALTER CONSTRAINT in each form. It skips
 // loudly on an older server.
+// promise:pg18-live
 func TestDDL_PG18Executes(t *testing.T) {
 	db := openOrSkip(t)
 	if v := versionOf(t, db); v < 180000 {

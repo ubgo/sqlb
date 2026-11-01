@@ -21,6 +21,7 @@ import (
 // keeps the caller's order; this proves that keeping it is harmless, and the
 // effects are read back from information_schema rather than trusted from a
 // clean Exec.
+// promise:ddl-ordering
 func TestDDL_PartitioningIsWrittenLastExecutes(t *testing.T) {
 	ctx := context.Background()
 	db := openOrSkip(t)

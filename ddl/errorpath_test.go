@@ -74,6 +74,7 @@ func TestInferType_AnInt32IsAnInt(t *testing.T) {
 // expression with no name is refused at Build with ErrNotAColumn rather than
 // rendering a definition whose name is empty, which every engine reads as a
 // syntax error far from its cause.
+// promise:ddl-column-validation
 func TestColumnDef_RefusesAColumnWithNoName(t *testing.T) {
 	nameless := expr.Col[int64](users, "")
 	_, err := ddl.NewCreateTable(postgres.Dialect{}, users).Column(ddl.Column(nameless)).Build()
@@ -179,6 +180,7 @@ func (unspellable[T]) Spelling(render.Dialect) (string, error) { return "", errN
 // through, so a definition that cannot be rendered must not come back as a
 // schema.Column either: an ordering and a drift check would then be made
 // against a column no CREATE TABLE could produce.
+// promise:ddl-describe
 func TestDescribeColumn_FailsWhereTheDefinitionCannotBeWritten(t *testing.T) {
 	for name, tc := range map[string]struct {
 		describe func() (schema.Column, error)
@@ -464,6 +466,7 @@ func TestDropTable_Refusals(t *testing.T) {
 // names another column would be written onto the wrong definition. The two
 // helpers exist so an engine's own ADD COLUMN and this package's refuse the
 // same things, so they are checked together.
+// promise:ddl-extra-columns
 func TestWriteColumnHelpers_RefuseAMistargetedClause(t *testing.T) {
 	write := map[string]func(*strings.Builder, *render.Args, ddl.ColumnSpec, []ddl.ColumnClause[postgres.Dialect]){
 		"WriteAddColumn":  ddl.WriteAddColumn[postgres.Dialect],
@@ -502,6 +505,7 @@ func TestWriteColumnHelpers_RefuseAMistargetedClause(t *testing.T) {
 // two helpers with a clause that does name the column write it, so the
 // refusals above are evidence about the target check rather than about a
 // helper that refuses everything.
+// promise:ddl-extra-columns
 func TestWriteColumnHelpers_WriteTheClausesTheyAccept(t *testing.T) {
 	cl := ddl.NewColumnClause[postgres.Dialect](email, ddl.PartAfterType, func(*render.Args) string { return `COLLATE "C"` })
 	for helper, fn := range map[string]func(*strings.Builder, *render.Args, ddl.ColumnSpec, []ddl.ColumnClause[postgres.Dialect]){

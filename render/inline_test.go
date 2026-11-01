@@ -26,6 +26,7 @@ func (quoting) QuoteLiteral(v any) (string, error) {
 // TestInlineArgs_NextWritesALiteral pins the mode DDL depends on: Next writes
 // the value into the text and binds nothing, so the statement has no
 // parameters for a driver to be handed.
+// promise:ddl-inline
 func TestInlineArgs_NextWritesALiteral(t *testing.T) {
 	a := render.NewInlineArgs(quoting{})
 	if got := a.Next("active"); got != "'active'" {
@@ -55,6 +56,7 @@ func TestArgs_BindingIsUnchanged(t *testing.T) {
 // TestArgs_LiteralIgnoresTheMode pins that Literal always writes a literal,
 // which is what a position that never takes a parameter needs even inside an
 // ordinary query.
+// promise:literal-explicit
 func TestArgs_LiteralIgnoresTheMode(t *testing.T) {
 	a := render.NewArgs(quoting{})
 	if got := a.Literal("english"); got != "'english'" {

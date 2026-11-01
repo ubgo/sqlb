@@ -63,6 +63,7 @@ var teardownDDL = []string{
 
 // TestConformance runs the shared suite against a real MySQL 8, the engine
 // the universality rule names and nothing had executed before.
+// promise:conformance-reset
 func TestConformance(t *testing.T) {
 	db := openOrSkip(t)
 	sqlbtest.Run(t, sqlbtest.Config{

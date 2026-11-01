@@ -110,6 +110,7 @@ func TestForms_TemporaryAndSchema(t *testing.T) {
 // TestForms_TemporaryRefusesAnotherSchema pins the engine's rule rather than a
 // guess: SQLite answers "temporary table name must be unqualified" for a
 // temporary object named in any schema but temp, so Build refuses it.
+// promise:sqlite-temp
 func TestForms_TemporaryRefusesAnotherSchema(t *testing.T) {
 	_, err := sqlite.CreateView(sqlite.View{Name: "v", Schema: "main"}).Temporary().
 		As(sqlite.Select(fmNoteID).From(fmNotes)).Build()
@@ -521,6 +522,7 @@ func TestForms_OrActionIsAClosedSet(t *testing.T) {
 // written through the dialect as a literal, so a hostile value reaches SQLite
 // as one argument it simply does not understand. What IS closed is the unit of
 // an offset, and that is closed here.
+// promise:sqlite-modifier
 func TestForms_ModifierIsQuotedAndClosedWhereItCanBe(t *testing.T) {
 	// A hostile modifier stays inside its literal rather than leaving it.
 	a := sqlb.NewInlineArgs(sqlite.Dialect{})

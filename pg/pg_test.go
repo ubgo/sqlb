@@ -10,6 +10,7 @@ import (
 )
 
 // Every construct in the package must fail closed under a non-Postgres dialect.
+// promise:engine-guard
 func TestGuards_FailUnderSQLite(t *testing.T) {
 	tb := sqlb.Table{Name: "t", Alias: "t"}
 	name := sqlb.Col[string](tb, "name")

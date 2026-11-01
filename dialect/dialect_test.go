@@ -103,6 +103,7 @@ func TestDialects_SatisfyRenderDialect(t *testing.T) {
 // cannot do something by not implementing the interface, never by implementing
 // it and returning false. ClickHouse has no RETURNING, so a write builder must
 // be able to discover that by type assertion alone.
+// promise:capability-interfaces
 func TestClickHouse_DeclinesReturning(t *testing.T) {
 	if _, ok := any(clickhouse.Dialect{}).(render.Returning); ok {
 		t.Fatal("clickhouse.Dialect satisfies render.Returning; ClickHouse has no RETURNING")

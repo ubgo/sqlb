@@ -44,3 +44,17 @@ __pycache__/
 
 # generated per run by contrib/vet TestVettool_RunsUnderGoVet
 contrib/vet/internal/probe/vettool_*/
+
+# lore
+.lore/lore.db
+.lore/lore.db-shm
+.lore/lore.db-wal
+.lore/state/
+.lore/backups/
+
+# Public agent entrypoint overrides the optional repolink default above.
+!/CLAUDE.md
+
+# Lore local runtime output; shared JSON remains tracked.
+.lore/LORE.md
+.lore/logs/

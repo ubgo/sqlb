@@ -69,6 +69,7 @@ func TestMySQL_Renders(t *testing.T) {
 
 // TestMySQL_FailsUnderAnotherDialect pins the guard: a MySQL expression in a
 // Postgres statement fails Build naming the construct.
+// promise:engine-guard
 func TestMySQL_FailsUnderAnotherDialect(t *testing.T) {
 	_, err := sqlb.NewSelect(sqlb.PostgresDialect{}).Exprs(mysql.UUID()).Build()
 	if !errors.Is(err, sqlb.ErrUnsupportedDialect) {
@@ -197,6 +198,7 @@ func TestDescribe_MySQLForeignKeysOrderTables(t *testing.T) {
 // constraint of one table is refused in a statement about another, in CREATE
 // TABLE and in every ALTER action naming one, and that a rename stays within
 // its table.
+// promise:mysql-constraint-table
 func TestTableConstraint_MySQLRefusesAnotherTable(t *testing.T) {
 	other := sqlb.Table{Name: "other", Alias: "o"}
 	otherID := sqlb.Col[int64](other, "id")

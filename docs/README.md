@@ -4,6 +4,8 @@
 
 | Document | What it answers |
 |---|---|
+| [knowledge-workflow.md](./knowledge-workflow.md) | Shared Lore context, Docsync references and the promise gate. |
+| [promise-audit.md](./promise-audit.md) | Initial promise assertions, corrections and verification limits. |
 | [cross-package.md](./cross-package.md) | The problem the library exists for: four packages that do not import each other, composed into one statement, and the three ownership shapes. |
 | [switching-databases.md](./switching-databases.md) | Moving a library or application between Postgres, MySQL and SQLite by changing one dialect value: what engines disagree on, how each difference is handled, and how the same rows everywhere is proven. |
 | [core-builder.md](./core-builder.md) | What the core gives you: tables, typed columns, predicates, statements, and how a query carries its own scan targets. |

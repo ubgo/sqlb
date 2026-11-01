@@ -182,6 +182,7 @@ func TestJSONSources(t *testing.T) {
 }
 
 // The planner hints render after the driving table.
+// promise:sqlite-indexed-by
 func TestPlannerHints(t *testing.T) {
 	tb := sqlb.Table{Name: "t", Alias: "t"}
 	name := sqlb.Col[string](tb, "name")

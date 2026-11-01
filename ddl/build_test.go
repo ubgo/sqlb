@@ -52,6 +52,7 @@ func one(t *testing.T) func(ddl.Script, error) string {
 // TestCreateTable_OneDeclarationBothEngines pins the core: the same column
 // declarations, the same builder, and each engine's own spelling of every
 // type, with nullability read off the Go type and every value a literal.
+// promise:ddl-authored
 func TestCreateTable_OneDeclarationBothEngines(t *testing.T) {
 	build := func(d render.Dialect) (ddl.Script, error) {
 		c := ddl.NewCreateTable(d, users).IfNotExists().
@@ -108,6 +109,8 @@ func TestColumn_TypesAndDefaults(t *testing.T) {
 
 // TestCreateTable_Refusals pins every Build-time refusal, each with its own
 // error, and that a refused statement carries no text.
+// promise:ddl-column-validation
+// promise:ddl-empty-oneof
 func TestCreateTable_Refusals(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -284,6 +287,7 @@ func TestAlterTable_Refusals(t *testing.T) {
 
 // TestAlterTable_EngineClausesStandAloneWhenTheySay pins the standalone flag
 // for an engine action, the shape pg's RENAME TO and SET SCHEMA will take.
+// promise:ddl-standalone
 func TestAlterTable_EngineClausesStandAloneWhenTheySay(t *testing.T) {
 	joinable := ddl.NewAlterClause[postgres.Dialect](func(*render.Args) string { return `ALTER COLUMN "email" SET NOT NULL` })
 	alone := ddl.NewStandaloneAlterClause[postgres.Dialect](func(*render.Args) string { return `RENAME TO "people"` })
@@ -327,6 +331,7 @@ func TestCreateTable_SchemaQualifiedWithoutAlias(t *testing.T) {
 // TestColumnClauses_RenderInTheirPart pins where each part lands in a column
 // definition: after the type, after the default, and that a computed column
 // writes no NOT NULL. Every part in ColumnPartValues is covered.
+// promise:ddl-generated-default
 func TestColumnClauses_RenderInTheirPart(t *testing.T) {
 	cc := func(c ddl.ColumnRef, p ddl.ColumnPart, s string) ddl.TableClause[postgres.Dialect] {
 		return ddl.NewColumnClause[postgres.Dialect](c, p, func(*render.Args) string { return s })
@@ -418,6 +423,7 @@ func (o onTable) ClauseTable() expr.Table { return o.t }
 
 // TestAlterTable_RefusesAnEngineActionOnAnotherTable pins the table check for
 // engine actions, by TableNamer and by ColumnNamer.
+// promise:ddl-table-validation
 func TestAlterTable_RefusesAnEngineActionOnAnotherTable(t *testing.T) {
 	x := ddl.NewAlterClause[postgres.Dialect](func(*render.Args) string { return "X" })
 	if _, err := ddl.NewAlterTable(postgres.Dialect{}, users).Clause(onTable{x, sessions}).Build(); !errors.Is(err, ddl.ErrForeignColumn) {
@@ -448,6 +454,7 @@ func TestWriteColumnWith_OnlyTheColumnBeingAdded(t *testing.T) {
 // TestAddColumn_RefusesWhatSQLiteCannotAdd pins the restricted ADD COLUMN: each
 // case is refused under SQLite with the rule named, and all of them are
 // accepted under Postgres, which implements render.UnrestrictedAddColumn.
+// promise:sqlite-add-column
 func TestAddColumn_RefusesWhatSQLiteCannotAdd(t *testing.T) {
 	uniq := ddl.NewColumnClause[sqlite.Dialect](email, ddl.PartConstraint, func(*render.Args) string { return "UNIQUE" })
 	for _, tc := range []struct {
@@ -532,6 +539,7 @@ func (j jsonValuer) Value() (driver.Value, error) { return j.v, nil }
 // column and Postgres and SQLite accept; whatever order As and Default come
 // in; from a raw message, a Valuer or a marshalled value; and refused when it
 // is not JSON. A byte column that is not JSON keeps its byte literal.
+// promise:ddl-json-default
 func TestDefault_JSONColumn(t *testing.T) {
 	js := ddl.Portable[json.RawMessage](schema.TypeJSON)
 	d := postgres.Dialect{}

@@ -16,7 +16,7 @@ Renders a built statement with its arguments substituted, **for reading and neve
 
 ## The problem
 
-`sqlb` never puts your values in the SQL. It emits markers and ships the values separately, which is why an injection cannot happen: a value containing `'; DROP TABLE users; --` is still a value, because it never travelled as SQL.
+In ordinary query mode, `sqlb` never puts your values in the SQL. Explicit inline and DDL rendering use dialect-quoted literals instead. It emits markers and ships the values separately, which is why an injection cannot happen: a value containing `'; DROP TABLE users; --` is still a value, because it never travelled as SQL.
 
 That is the right default, and it makes a log line hard to read:
 

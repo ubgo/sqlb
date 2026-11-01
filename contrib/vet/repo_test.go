@@ -28,6 +28,7 @@ import (
 // SQLite statement, which is the residue those two tests exist to hold. Each
 // file appears once on purpose. Before the same day's fix the analyzer also
 // reported the pg.Dialect type in each, one mistake giving two findings.
+// promise:vet-source-checks
 func TestRepo_ReportsOnlyTheDeliberatePins(t *testing.T) {
 	root, err := filepath.Abs("../..")
 	if err != nil {
