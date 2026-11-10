@@ -10,7 +10,7 @@ import (
 )
 
 // The forms inside a statement that already had a constructor, rendered. Each
-// is executed in contrib/driver-pgx/objectforms_test.go, and the one that
+// is executed in contrib/driver-pgx/enginetest/objectforms_test.go, and the one that
 // could only have been found there is ALTER EXTENSION's member list: an Index
 // renders perfectly and the server refuses it.
 

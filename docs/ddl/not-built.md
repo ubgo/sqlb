@@ -21,9 +21,9 @@ Every workaround here has been run, not just looked at. Each snippet comes from 
 
 | Engine | Test | Runs against |
 |---|---|---|
-| Postgres | `TestRawRecipes_Postgres` in `contrib/driver-pgx/raw_recipes_test.go` | Postgres 17, when `SQLB_PG_DSN` is set (`task test:pg`) |
-| SQLite | `TestRawRecipes_SQLite` in `contrib/driver-sqlite/raw_recipes_test.go` | an in-memory SQLite, on every `go test` |
-| MySQL | `TestRawRecipes_MySQL` in `contrib/driver-mysql/raw_recipes_test.go` | MySQL 8.4, when `SQLB_MYSQL_DSN` is set (`task test:mysql`) |
+| Postgres | `TestRawRecipes_Postgres` in `contrib/driver-pgx/enginetest/raw_recipes_test.go` | Postgres 17, when `SQLB_PG_DSN` is set (`task test:pg`) |
+| SQLite | `TestRawRecipes_SQLite` in `contrib/driver-sqlite/enginetest/raw_recipes_test.go` | an in-memory SQLite, on every `go test` |
+| MySQL | `TestRawRecipes_MySQL` in `contrib/driver-mysql/enginetest/raw_recipes_test.go` | MySQL 8.4, when `SQLB_MYSQL_DSN` is set (`task test:mysql`) |
 
 The list of statements is not written by hand either. Three detectors, one per engine, classify every statement in the engine's own command list: `pg/ddl_coverage_test.go`, `sqlite/ddl_coverage_test.go` and `mysql/ddl_coverage_test.go`. The [appendix](#appendix-every-detector-entry) is generated from them by `scripts/gen-not-built.py`. `task docs:not-built` fails in any of these cases:
 

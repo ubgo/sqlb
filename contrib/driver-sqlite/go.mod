@@ -2,10 +2,7 @@ module github.com/ubgo/sqlb/contrib/driver-sqlite
 
 go 1.24
 
-require (
-	github.com/ubgo/sqlb v0.1.0
-	modernc.org/sqlite v1.39.0
-)
+require modernc.org/sqlite v1.39.0
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect

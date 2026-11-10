@@ -4,24 +4,35 @@ Measured per module on Go 1.24 by [`scripts/covmerge.py`](./scripts/covmerge.py)
 
 | Module | Coverage | CI floor |
 |---|---:|---:|
-| `github.com/ubgo/sqlb` | **88.4%** | 80% |
+| `github.com/ubgo/sqlb` | **91.6%** | 80% |
 | `contrib/driver-sqlite` | **97.7%** | 90% |
+| `contrib/vet` | **98.5%** | — |
 | `contrib/structbind` | **96.8%** | — |
-| `contrib/migrate` | **91.7%** | — |
 | `contrib/debug` | **91.5%** | — |
-| `contrib/vet` | **77.4%** | — |
+| `contrib/migrate` | **87.8%** | — |
 | `contrib/driver-pgx` | **11.1%** | — |
+| `contrib/driver-mysql` | **7.4%** | — |
 
-Real output of `task cover`:
+The tests that open a database live in a never-released `enginetest` module beside the module they prove (`contrib/driver-sqlite/enginetest`, `contrib/vet/enginetest` and so on), so a released module requires only what its library code imports. `covmerge.py` run inside an `enginetest` module measures the module it sits in, which is why `task cover` lists those rows: a module's figure in the table is its own tests and its `enginetest` tests merged. The CI floor for `contrib/driver-sqlite` runs in `contrib/driver-sqlite/enginetest`.
+
+Real output of `task cover` (without a Postgres or MySQL server):
 
 ```
-.: 88.4%
-contrib/driver-sqlite: 97.7%
-contrib/driver-pgx: 11.1%
-contrib/vet: 77.4%
-contrib/migrate: 91.7%
+.: 91.6%
+contrib/driver-sqlite: 0.0%
+contrib/driver-sqlite/enginetest: 97.7%
+contrib/driver-pgx: 0.0%
+contrib/driver-pgx/enginetest: 11.1%
+contrib/driver-mysql: 0.0%
+contrib/driver-mysql/enginetest: 7.4%
+contrib/vet: 53.7%
+contrib/vet/enginetest: 64.6%
+contrib/vet/cmd/sqlb: 0.0%
+contrib/migrate: 34.2%
+contrib/migrate/enginetest: 82.0%
 contrib/debug: 91.5%
-contrib/structbind: 96.8%
+contrib/structbind: 86.5%
+contrib/structbind/enginetest: 72.2%
 ```
 
 `contrib/driver-pgx` reads 11.1% without a server and that number is honest rather than alarming: its suite is gated on `SQLB_PG_DSN` and skips loudly when it is unset, so an ordinary run measures the module's own `Open` and little else. With a Postgres 17 to talk to, the same suite executes 555 cases. A coverage figure for a module whose job is to reach a server is a statement about the environment it ran in, not about the tests.

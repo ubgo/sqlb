@@ -2,11 +2,18 @@
 
 All notable changes to `github.com/ubgo/sqlb` are documented here. The format follows Keep a Changelog, and versioning is SemVer with the pre-GA convention that `v0.x` may break.
 
-## [contrib/migrate 0.1.1] - 2026-11-10
+## [contrib modules, 2026-11-10]
+
+`contrib/migrate/v0.1.1`, `contrib/structbind/v0.1.1`, `contrib/driver-sqlite/v0.1.1`, `contrib/driver-pgx/v0.1.1`, `contrib/driver-mysql/v0.1.1`, `contrib/vet/v0.1.2` and the new `contrib/vet/cmd/sqlb` module. No change to any library's Go code ([#4](https://github.com/ubgo/sqlb/issues/4)).
 
 ### Changed
 
-- `contrib/migrate` requires no database driver. Its tests that open SQLite, Postgres and MySQL moved to `contrib/migrate/enginetest`, a test module that is never released. Before, those tests imported `modernc.org/sqlite`, `github.com/jackc/pgx/v5` and `github.com/go-sql-driver/mysql` while the migrate `go.mod` did not list them, so `go mod tidy` in any module importing migrate added all three drivers to that module's `go.mod`. No change to migrate's Go code.
+- A released module now requires only what its library code imports. The tests that open a database moved to a never-released `enginetest` module beside each module (`internal: true` in its `.volt.yml`):
+  - `contrib/migrate`: its tests imported the pgx, MySQL and SQLite drivers while its `go.mod` listed none of them, so `go mod tidy` in any module importing migrate added all three drivers to that module's `go.mod`. migrate now requires only the core.
+  - `contrib/structbind` no longer requires `modernc.org/sqlite`; it requires only the core.
+  - `contrib/driver-sqlite`, `contrib/driver-pgx` and `contrib/driver-mysql` no longer require the core, which only their conformance tests used; each requires only its database driver.
+  - `contrib/vet` no longer requires any database driver. The `sqlb` command, which opens a database for `sqlb vet --dsn`, is its own module, `github.com/ubgo/sqlb/contrib/vet/cmd/sqlb`, and carries the three drivers; `go install github.com/ubgo/sqlb/contrib/vet/cmd/sqlb@latest` installs it as before.
+- `scripts/covmerge.py` run inside an `enginetest` module measures the module it sits in, and the CI coverage floor for `contrib/driver-sqlite` runs in `contrib/driver-sqlite/enginetest`.
 
 ## [0.1.1] - 2026-10-11
 

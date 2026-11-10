@@ -17,15 +17,21 @@ use (
 	.
 	./contrib/debug
 	./contrib/driver-mysql
+	./contrib/driver-mysql/enginetest
 	./contrib/driver-pgx
+	./contrib/driver-pgx/enginetest
 	./contrib/driver-sqlite
+	./contrib/driver-sqlite/enginetest
 	./contrib/migrate
 	./contrib/migrate/enginetest
 	./contrib/structbind
+	./contrib/structbind/enginetest
 	./contrib/vet
+	./contrib/vet/cmd/sqlb
+	./contrib/vet/enginetest
 )
 
-// The pin in contrib/driver-sqlite/go.mod names the version a consumer will
+// The pins in the contrib go.mod files name the version a consumer will
 // resolve from the proxy. Until that tag exists, resolving it here would hit
 // the network and fail, so the workspace maps it to this checkout. A replace
 // in go.work is local only: it is never published and a consumer never sees

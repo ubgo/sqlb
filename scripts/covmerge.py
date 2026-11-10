@@ -33,6 +33,22 @@ def main() -> int:
     pkgs = subprocess.run(
         ["go", "list", "./..."], capture_output=True, text=True, check=True
     ).stdout.split()
+    coverpkg = "./..."
+    # A never-released enginetest module holds the database-backed tests of
+    # the module it sits in, so its profile is that module's packages, not
+    # its own (it has no code besides the tests).
+    if os.path.basename(os.getcwd()) == "enginetest":
+        here = subprocess.run(
+            ["go", "list", "-f", "{{.Module.Path}}", "."], capture_output=True, text=True, check=True
+        ).stdout.strip()
+        parent = here.rsplit("/", 1)[0]
+        listed = subprocess.run(
+            ["go", "list", "-f", "{{.ImportPath}} {{with .Module}}{{.Path}}{{end}}", parent + "/..."],
+            capture_output=True, text=True, check=True,
+        ).stdout.split("\n")
+        coverpkg = ",".join(
+            f.split()[0] for f in listed if len(f.split()) == 2 and f.split()[1] == parent
+        )
 
     mode = "atomic"
     # A block is identified by "file:startline.col,endline.col numstmts"; the
@@ -46,7 +62,7 @@ def main() -> int:
         for i, pkg in enumerate(pkgs):
             f = os.path.join(d, f"{i}.out")
             r = subprocess.run(
-                ["go", "test", "-coverpkg=./...", "-covermode=atomic",
+                ["go", "test", f"-coverpkg={coverpkg}", "-covermode=atomic",
                  f"-coverprofile={f}", pkg],
                 capture_output=True, text=True,
             )

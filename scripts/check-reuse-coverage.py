@@ -26,10 +26,10 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Packages whose exported functions are entry points, and the file that must
-# cover them. The test lives in contrib/driver-sqlite because that is the only
+# cover them. The test lives in contrib/driver-sqlite/enginetest because that is the only
 # module here that can execute a statement against a real database.
 SOURCES = {"scan": "scan", "exec": "exec"}
-TEST = os.path.join(REPO, "contrib", "driver-sqlite", "reuse_test.go")
+TEST = os.path.join(REPO, "contrib", "driver-sqlite", "enginetest", "reuse_test.go")
 
 # A function taking a statement: the parameter list mentions *stmt.Select, with
 # or without its dialect type argument, or stmt.Query. Methods are skipped — a method on a builder is allowed to mutate
@@ -77,7 +77,7 @@ def main():
         for name in missing:
             print(f"{name} takes a statement and is not covered by the reuse test")
         print()
-        print("Add it to contrib/driver-sqlite/reuse_test.go, both in the")
+        print("Add it to contrib/driver-sqlite/enginetest/reuse_test.go, both in the")
         print("ENTRY POINTS line and as a subtest calling it twice on one value.")
         return 1
 

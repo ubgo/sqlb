@@ -212,7 +212,7 @@ Rendering and running are different claims, so this story is pinned in two place
 | Where | What it proves |
 |---|---|
 | `examples/cookbook/example_test.go` | The exact SQL. Each recipe is an `Example` whose `// Output:` block is the rendered statement, so a change in rendering fails the build. |
-| `contrib/driver-sqlite/crosspackage_test.go` | That SQLite accepts it, that the joins do not fan out, and that the bindings land in the right fields — including a LEFT-join miss reported as a miss rather than an empty value. |
+| `contrib/driver-sqlite/enginetest/crosspackage_test.go` | That SQLite accepts it, that the joins do not fan out, and that the bindings land in the right fields — including a LEFT-join miss reported as a miss rather than an empty value. |
 
 The second is the one that cannot be faked. `TestTask_LoadOneUserAcrossFourPackages` loads a fully-populated user and asserts every field; `TestTask_CompositeDistinguishesAMissFromAnEmptyValue` loads a user with no phone, no membership and no profile and asserts that each nested type reports the miss; `TestTask_TheSameUserInADifferentWorkspace` loads one user in two workspaces and asserts the role differs, which is what says the membership join is scoped by the value the application supplied.
 

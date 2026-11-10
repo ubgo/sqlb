@@ -24,7 +24,7 @@ jobs:
       matrix:
         module:
           - .
-          - contrib/driver-sqlite
+          - contrib/driver-sqlite/enginetest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -55,7 +55,7 @@ jobs:
           TOTAL=$(go tool cover -func=cover.out | tail -1 | grep -oE '[0-9.]+' | tail -1)
           case "${{ matrix.module }}" in
             .) FLOOR=80 ;;
-            contrib/driver-sqlite) FLOOR=90 ;;
+            contrib/driver-sqlite/enginetest) FLOOR=90 ;;
             *) FLOOR=0 ;;
           esac
           echo "coverage: $TOTAL% (floor: $FLOOR%)"

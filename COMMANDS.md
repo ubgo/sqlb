@@ -131,7 +131,7 @@ Releases are cut with [volt](https://github.com/ubgo/voltkit/tree/main/apps/volt
 
 Generated from `Taskfile.yml` by `python3 scripts/gen-commands-doc.py`; `task docs:commands` fails when it is stale. 50 tasks.
 
-`MODULES` is `. contrib/driver-sqlite contrib/driver-pgx contrib/driver-mysql contrib/vet contrib/migrate contrib/migrate/enginetest contrib/debug contrib/structbind`; a task that says *for each MODULE* runs its step in each of those directories.
+`MODULES` is `. contrib/driver-sqlite contrib/driver-sqlite/enginetest contrib/driver-pgx contrib/driver-pgx/enginetest contrib/driver-mysql contrib/driver-mysql/enginetest contrib/vet contrib/vet/enginetest contrib/vet/cmd/sqlb contrib/migrate contrib/migrate/enginetest contrib/debug contrib/structbind contrib/structbind/enginetest`; a task that says *for each MODULE* runs its step in each of those directories.
 
 ### `task check`
 
@@ -422,7 +422,7 @@ Internal: called by other tasks, not run directly.
 Runs in `{{.DIR}}`.
 
 ```sh
-python3 {{if eq .DIR "."}}scripts{{else}}../../scripts{{end}}/covmerge.py cover.out
+python3 {{.ROOT_DIR}}/scripts/covmerge.py cover.out
 echo "{{.DIR}}: $(go tool cover -func=cover.out | tail -1 | awk '{print $NF}')"
 rm -f cover.out
 ```
@@ -474,9 +474,9 @@ Internal: called by other tasks, not run directly.
 Runs in `{{.DIR}}`.
 
 ```sh
-python3 {{if eq .DIR "."}}scripts{{else}}../../scripts{{end}}/covmerge.py cover.out
+python3 {{.ROOT_DIR}}/scripts/covmerge.py cover.out
 echo "--- {{.DIR}}"
-sh {{if eq .DIR "."}}scripts{{else}}../../scripts{{end}}/uncovered.sh cover.out
+sh {{.ROOT_DIR}}/scripts/uncovered.sh cover.out
 ```
 
 ### `task reuse:check`
@@ -554,12 +554,8 @@ Variables, each overridable on the command line as `task test:mysql NAME=value`:
 
 - `MYSQL_DSN`, default `root:sqlb@tcp(127.0.0.1:33069)/sqlb`
 
-Environment it sets for its commands:
-
-- `SQLB_MYSQL_DSN`, set from `MYSQL_DSN`
-
 ```sh
-go test -race -count=1 ./contrib/driver-mysql/... ./contrib/vet/... ./contrib/migrate/... ./contrib/migrate/enginetest/...
+SQLB_MYSQL_DSN='{{.MYSQL_DSN}}' go test -race -count=1 ./contrib/driver-mysql/... ./contrib/driver-mysql/enginetest/... ./contrib/vet/... ./contrib/vet/enginetest/... ./contrib/migrate/... ./contrib/migrate/enginetest/...
 ```
 
 ### `task test:pg`
@@ -570,12 +566,8 @@ Variables, each overridable on the command line as `task test:pg NAME=value`:
 
 - `PG_DSN`, default `postgres:///sqlb_scratch?sslmode=disable`
 
-Environment it sets for its commands:
-
-- `SQLB_PG_DSN`, set from `PG_DSN`
-
 ```sh
-go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/... ./contrib/migrate/enginetest/...
+SQLB_PG_DSN='{{.PG_DSN}}' go test -race -count=1 ./contrib/driver-pgx/... ./contrib/driver-pgx/enginetest/... ./contrib/vet/... ./contrib/vet/enginetest/... ./contrib/migrate/... ./contrib/migrate/enginetest/...
 ```
 
 ### `task test:pg18`
@@ -586,12 +578,8 @@ Variables, each overridable on the command line as `task test:pg18 NAME=value`:
 
 - `PG18_DSN`, default `postgres://postgres:sqlb@127.0.0.1:54318/postgres?sslmode=disable`
 
-Environment it sets for its commands:
-
-- `SQLB_PG_DSN`, set from `PG18_DSN`
-
 ```sh
-go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/... ./contrib/migrate/enginetest/...
+SQLB_PG_DSN='{{.PG18_DSN}}' go test -race -count=1 ./contrib/driver-pgx/... ./contrib/driver-pgx/enginetest/... ./contrib/vet/... ./contrib/vet/enginetest/... ./contrib/migrate/... ./contrib/migrate/enginetest/...
 ```
 
 ### `task test:race`
@@ -606,7 +594,7 @@ task module:race
 
 Run the SQLite proof - the conformance suite and every sqlite construct and DDL statement - with the race detector
 
-Runs in `contrib/driver-sqlite`.
+Runs in `contrib/driver-sqlite/enginetest`.
 
 ```sh
 go test -race -count=1 ./...

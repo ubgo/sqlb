@@ -17,7 +17,7 @@ These four directories are that story, and they are four directories on purpose 
 
 `workspace` never learns that `authlite` exists. `authlite` never learns that any of the other three exist. One statement reaches all four.
 
-The walkthrough is [`docs/cross-package.md`](../../docs/cross-package.md). The composite is **executed** against a real database in [`contrib/driver-sqlite/crosspackage_test.go`](../../contrib/driver-sqlite/crosspackage_test.go), which is where the half a rendering test cannot reach is pinned: a LEFT-join miss reported as a miss rather than as an empty value.
+The walkthrough is [`docs/cross-package.md`](../../docs/cross-package.md). The composite is **executed** against a real database in [`contrib/driver-sqlite/enginetest/crosspackage_test.go`](../../contrib/driver-sqlite/enginetest/crosspackage_test.go), which is where the half a rendering test cannot reach is pinned: a LEFT-join miss reported as a miss rather than as an empty value.
 
 ## The recipes
 

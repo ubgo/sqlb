@@ -2,7 +2,9 @@ version: '3'
 
 # Reusable command runner for the ubgo/sqlb contrib module driver-sqlite.
 # The repository-wide gate is `task check` at the root, which walks this
-# module too; these tasks are for working inside it.
+# module too; these tasks are for working inside it. The tests live in
+# ./enginetest, a never-released module, so the module itself requires no
+# more than the SQLite driver; the test tasks run there.
 
 tasks:
   default:
@@ -12,23 +14,27 @@ tasks:
 
   test:
     desc: Run tests, including the conformance suite against a real database
+    dir: enginetest
     cmds:
       - go test ./...
 
   test:race:
     desc: Run tests with the race detector
+    dir: enginetest
     cmds:
       - go test -race -count=2 ./...
 
   conformance:
     desc: Run only the shared conformance suite, verbosely
+    dir: enginetest
     cmds:
       - go test -run TestConformance -v ./...
 
   cover:
     desc: Run tests with coverage and print the total
+    dir: enginetest
     cmds:
-      - go test -coverprofile=cover.out -covermode=atomic ./...
+      - go test -coverpkg=github.com/ubgo/sqlb/contrib/driver-sqlite -coverprofile=cover.out -covermode=atomic ./...
       - go tool cover -func=cover.out | tail -1
 
   vet:

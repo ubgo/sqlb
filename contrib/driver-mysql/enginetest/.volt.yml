@@ -1,0 +1,2 @@
+# Never released: tests of contrib/driver-mysql that need a real database, kept out of the released module.
+internal: true

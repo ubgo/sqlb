@@ -12,7 +12,7 @@ import (
 
 // The CREATE TABLE, CREATE INDEX, CREATE VIEW, CREATE MATERIALIZED VIEW and
 // CREATE TRIGGER forms of the second pass, rendered. Every one is executed in
-// contrib/driver-pgx/tableshape_test.go.
+// contrib/driver-pgx/enginetest/tableshape_test.go.
 
 var (
 	tsParent = sqlb.Table{Name: "people", Schema: "auth"}

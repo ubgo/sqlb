@@ -39,4 +39,4 @@ Two things are load-bearing and easy to get wrong:
 
 ## Where it is proven
 
-Rendered in [`../example_test.go`](../example_test.go), recipes 1 and 2. Executed against a real database in [`contrib/driver-sqlite/crosspackage_test.go`](../../../contrib/driver-sqlite/crosspackage_test.go). The walkthrough is [`docs/cross-package.md`](../../../docs/cross-package.md).
+Rendered in [`../example_test.go`](../example_test.go), recipes 1 and 2. Executed against a real database in [`contrib/driver-sqlite/enginetest/crosspackage_test.go`](../../../contrib/driver-sqlite/enginetest/crosspackage_test.go). The walkthrough is [`docs/cross-package.md`](../../../docs/cross-package.md).

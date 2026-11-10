@@ -17,7 +17,7 @@ Floors are a ratchet, exactly like the documentation coverage gate: they only
 go up, and raising one is how the work is recorded as done. A floor of zero is
 not an exemption, it is a package nobody has written the paragraph for yet.
 
-A task is executed, and only contrib/driver-sqlite can execute anything, so a
+A task is executed, and only contrib/driver-sqlite/enginetest can execute anything, so a
 layer's task tests live there rather than in the layer's own directory. Each
 layer claims one file by name; a claimed file counts for the layer that claimed
 it and is excluded from the directory's own count, so no test holds up two
@@ -38,7 +38,7 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # A layer's task tests cannot live in the layer's own package, because a task
-# is executed and only contrib/driver-sqlite can execute anything: SQLite needs
+# is executed and only contrib/driver-sqlite/enginetest can execute anything: SQLite needs
 # no server, so it is the one module where a task runs on every machine. So a
 # layer claims files in that directory by name, and a claimed file counts for
 # the layer and not for the driver. Counting it for both would let one test
@@ -52,27 +52,27 @@ FLOORS = {
     # was rendered-only until 2026-09-20; three install, evolve and remove a
     # table through the DDL builders with the same Col declarations the
     # queries read, since 2026-09-21.
-    "contrib/driver-sqlite": (10, "contrib/driver-sqlite", None),
+    "contrib/driver-sqlite": (10, "contrib/driver-sqlite/enginetest", None),
     # One file per layer, written 2026-09-24, each doing the jobs that layer
     # exists for: statement shape, predicates over what a person typed, result
     # shapes, and a schema two packages contributed. These were zero, which is
     # not an exemption but a package nobody had written the paragraph for.
-    "stmt": (3, "contrib/driver-sqlite", "task_stmt_test.go"),
-    "scan": (3, "contrib/driver-sqlite", "task_scan_test.go"),
-    "expr": (3, "contrib/driver-sqlite", "task_expr_test.go"),
-    "schema": (3, "contrib/driver-sqlite", "task_schema_test.go"),
+    "stmt": (3, "contrib/driver-sqlite/enginetest", "task_stmt_test.go"),
+    "scan": (3, "contrib/driver-sqlite/enginetest", "task_scan_test.go"),
+    "expr": (3, "contrib/driver-sqlite/enginetest", "task_expr_test.go"),
+    "schema": (3, "contrib/driver-sqlite/enginetest", "task_schema_test.go"),
     # Postgres can execute a task too, for anyone with a server: the DDL gap
     # work of 2026-09-24 wrote its effects as tasks that read each one back
     # out of the catalogue rather than asserting a rendering, so this floor
     # exists and is not zero. It needs SQLB_PG_DSN, which is why it is not
     # where a layer's floor lives.
-    "contrib/driver-pgx": (29, "contrib/driver-pgx", None),
+    "contrib/driver-pgx": (29, "contrib/driver-pgx/enginetest", None),
     # MySQL was the one engine whose execution tests all answered "does this
     # construct run" and none answered "can a person do their job", which this
     # gate calls a package nobody has written the paragraph for. Written
     # 2026-09-24; the fifth of them surfaced a real gap, a trigger guard that
     # could only be written as a hand-rolled string.
-    "contrib/driver-mysql": (5, "contrib/driver-mysql", None),
+    "contrib/driver-mysql": (5, "contrib/driver-mysql/enginetest", None),
 }
 
 # Every file some layer claims, so the directory's own count can exclude them.
