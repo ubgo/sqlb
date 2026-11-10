@@ -2,6 +2,12 @@
 
 All notable changes to `github.com/ubgo/sqlb` are documented here. The format follows Keep a Changelog, and versioning is SemVer with the pre-GA convention that `v0.x` may break.
 
+## [contrib/migrate 0.1.1] - 2026-11-10
+
+### Changed
+
+- `contrib/migrate` requires no database driver. Its tests that open SQLite, Postgres and MySQL moved to `contrib/migrate/enginetest`, a test module that is never released. Before, those tests imported `modernc.org/sqlite`, `github.com/jackc/pgx/v5` and `github.com/go-sql-driver/mysql` while the migrate `go.mod` did not list them, so `go mod tidy` in any module importing migrate added all three drivers to that module's `go.mod`. No change to migrate's Go code.
+
 ## [0.1.1] - 2026-10-11
 
 ### Added

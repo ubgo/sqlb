@@ -131,7 +131,7 @@ Releases are cut with [volt](https://github.com/ubgo/voltkit/tree/main/apps/volt
 
 Generated from `Taskfile.yml` by `python3 scripts/gen-commands-doc.py`; `task docs:commands` fails when it is stale. 50 tasks.
 
-`MODULES` is `. contrib/driver-sqlite contrib/driver-pgx contrib/driver-mysql contrib/vet contrib/migrate contrib/debug contrib/structbind`; a task that says *for each MODULE* runs its step in each of those directories.
+`MODULES` is `. contrib/driver-sqlite contrib/driver-pgx contrib/driver-mysql contrib/vet contrib/migrate contrib/migrate/enginetest contrib/debug contrib/structbind`; a task that says *for each MODULE* runs its step in each of those directories.
 
 ### `task check`
 
@@ -559,7 +559,7 @@ Environment it sets for its commands:
 - `SQLB_MYSQL_DSN`, set from `MYSQL_DSN`
 
 ```sh
-go test -race -count=1 ./contrib/driver-mysql/... ./contrib/vet/... ./contrib/migrate/...
+go test -race -count=1 ./contrib/driver-mysql/... ./contrib/vet/... ./contrib/migrate/... ./contrib/migrate/enginetest/...
 ```
 
 ### `task test:pg`
@@ -575,7 +575,7 @@ Environment it sets for its commands:
 - `SQLB_PG_DSN`, set from `PG_DSN`
 
 ```sh
-go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/...
+go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/... ./contrib/migrate/enginetest/...
 ```
 
 ### `task test:pg18`
@@ -591,7 +591,7 @@ Environment it sets for its commands:
 - `SQLB_PG_DSN`, set from `PG18_DSN`
 
 ```sh
-go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/...
+go test -race -count=1 ./contrib/driver-pgx/... ./contrib/vet/... ./contrib/migrate/... ./contrib/migrate/enginetest/...
 ```
 
 ### `task test:race`

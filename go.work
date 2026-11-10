@@ -18,10 +18,11 @@ use (
 	./contrib/debug
 	./contrib/driver-mysql
 	./contrib/driver-pgx
-	./contrib/vet
 	./contrib/driver-sqlite
 	./contrib/migrate
+	./contrib/migrate/enginetest
 	./contrib/structbind
+	./contrib/vet
 )
 
 // The pin in contrib/driver-sqlite/go.mod names the version a consumer will

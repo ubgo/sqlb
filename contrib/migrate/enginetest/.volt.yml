@@ -1,0 +1,2 @@
+# Never released: the migrate tests on SQLite, Postgres and MySQL, kept out of the migrate module so it requires no database driver.
+internal: true
