@@ -20,6 +20,8 @@ The maintainers keep a measured snapshot of engines, packages, what each gate pr
 
 **Zero dependencies in the core.** The root module imports nothing outside the standard library. Anything that needs a third-party package is a contrib module. `task zerodep` is the check.
 
+**A released module requires only what its code imports.** An app that imports a contrib module must never download a package it does not use, so a released module's go.mod lists only what its library packages import and is tidy without `go.work`. A test that needs a driver or another module the library does not import goes in the never-released `enginetest` module beside it (`.volt.yml` says `internal: true`). `task deps:check` is the check.
+
 **Only universal SQL in the core.** A construct belongs in the core only when Postgres, MySQL 8, SQLite and ClickHouse all accept it with the same syntax and the same meaning. Anything else goes in the engine package, even when two engines agree. Before adding a name to `constants.go` or a constructor to the core, check all four. Postgres, SQLite and MySQL are checked by execution, through the shared conformance suite in `sqlbtest`, which a construct claimed universal gets a case in; ClickHouse is the quarter still checked by reading its documentation.
 
 **Every engine construct fails closed.** It records its own name through the guarded constructors, and its package's guard test builds it under `SQLiteDialect{}` and asserts `ErrUnsupportedDialect`. A construct without that test is not finished.

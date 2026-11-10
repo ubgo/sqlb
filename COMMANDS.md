@@ -129,7 +129,7 @@ Releases are cut with [volt](https://github.com/ubgo/voltkit/tree/main/apps/volt
 
 <!-- BEGIN GENERATED TASKS -->
 
-Generated from `Taskfile.yml` by `python3 scripts/gen-commands-doc.py`; `task docs:commands` fails when it is stale. 50 tasks.
+Generated from `Taskfile.yml` by `python3 scripts/gen-commands-doc.py`; `task docs:commands` fails when it is stale. 51 tasks.
 
 `MODULES` is `. contrib/driver-sqlite contrib/driver-sqlite/enginetest contrib/driver-pgx contrib/driver-pgx/enginetest contrib/driver-mysql contrib/driver-mysql/enginetest contrib/vet contrib/vet/enginetest contrib/vet/cmd/sqlb contrib/migrate contrib/migrate/enginetest contrib/debug contrib/structbind contrib/structbind/enginetest`; a task that says *for each MODULE* runs its step in each of those directories.
 
@@ -141,6 +141,7 @@ The gate - every module formatted, vetted and tested, plus the core's own gates
 task check:modules
 task typecheck
 task zerodep
+task deps:check
 task reuse:check
 task tasks:check
 task docs:check
@@ -176,6 +177,15 @@ Show available tasks
 
 ```sh
 task --list
+```
+
+### `task deps:check`
+
+FAIL if a released module's go.mod is not tidy without go.work, or requires a module none of its library packages import (test-only requires belong in an enginetest module)
+
+```sh
+mods=$(find . -name go.mod -exec dirname {} \; | sort | while read -r d; do grep -qs '^internal: true' "$d/.volt.yml" || echo "$d"; done)
+go run ./internal/depcheck $mods
 ```
 
 ### `task detector`

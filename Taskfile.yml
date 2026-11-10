@@ -22,6 +22,7 @@ tasks:
       - task: check:modules
       - task: typecheck
       - task: zerodep
+      - task: deps:check
       - task: reuse:check
       - task: tasks:check
       - task: docs:check
@@ -130,6 +131,18 @@ tasks:
           echo "the sqlb core has a third-party dependency - it belongs in contrib/"; exit 1
         fi
         echo "zerodep: the core imports nothing outside the standard library"
+
+  # The dependency rule: an app never downloads a module it does not import.
+  # Every released module (a go.mod whose .volt.yml does not say
+  # internal: true) must be tidy on its own and require only modules its
+  # library packages import; what only tests need lives in a never-released
+  # enginetest module beside it.
+  deps:check:
+    desc: FAIL if a released module's go.mod is not tidy without go.work, or requires a module none of its library packages import (test-only requires belong in an enginetest module)
+    cmds:
+      - |
+        mods=$(find . -name go.mod -exec dirname {} \; | sort | while read -r d; do grep -qs '^internal: true' "$d/.volt.yml" || echo "$d"; done)
+        go run ./internal/depcheck $mods
 
   docs:check:
     desc: Verify the markdown - links resolve, anchors match, no rules, no hard wraps
