@@ -13,6 +13,7 @@ The whole path is in [`examples/prefixed/widgets`](../examples/prefixed/widgets/
 - [Step 3: the declaration and its description](#step-3-the-declaration-and-its-description)
 - [Step 4: numbered migrations](#step-4-numbered-migrations)
 - [Step 5: databases the old strings already created](#step-5-databases-the-old-strings-already-created)
+- [Moving an existing migration history onto the ledger](#moving-an-existing-migration-history-onto-the-ledger)
 - [Step 6: the queries](#step-6-the-queries)
 - [Step 7: the live-schema check](#step-7-the-live-schema-check)
 - [Step 8: the tests](#step-8-the-tests)
@@ -166,6 +167,35 @@ Databases already exist that the old module created with `CREATE TABLE IF NOT EX
 4. On SQLite, the declared type is what the driver reads back by: a `time.Time` column must be declared `TIMESTAMP` or `DATE` to scan into a `time.Time`, which is what `ddl.Column` writes. A column the old strings made `TEXT` is reported by the live check as a type difference; either read it as a string with `ddl.RawType[string]("TEXT")`, or move it with a table rebuild in a later migration.
 
 `TestTask_AdoptTablesAnEarlierReleaseCreated` runs exactly this on both engines: the old strings, a row, then the ledger; 0001, 0002 and 0003 are recorded, the row is intact, and the live check passes.
+
+## Moving an existing migration history onto the ledger
+
+Step 5 fits a schema the old module created in one step. A module that already has a ledger of its own is different: its users' databases hold a history of numbered migrations, some from the module and some contributed by plugins under their own owners, and most of them `ALTER TABLE ... ADD COLUMN`, which has no `IF NOT EXISTS` on SQLite or MySQL. Folding that history into one idempotent 0001 is not possible, and running it again fails. The ledger adopts it instead:
+
+1. Turn every migration the old ledger could have recorded into a `migrate.Migration` with the same owner and name, its script written with the `ddl` builders. Released migrations keep their numbers; nothing is renumbered.
+2. At start-up, if the old ledger table exists, read its rows. Where the old ledger kept checksums, check each against the old script by the old algorithm first, and refuse to start on a mismatch, as the old code would have.
+3. Call `Adopt` with every migration the code knows and a `migrate.Ran` that answers from those rows: which migrations ran, and when. Then call `Apply` with the same list, which runs only what the old ledger did not list.
+
+```go
+led, err := migrate.NewLedger(d, prefix+"sqlb_migrations", migrate.EngineLock(d, prefix+"acme/widgets"))
+if err != nil {
+	return err
+}
+ran := func(m migrate.Migration) (time.Time, bool) {
+	at, ok := oldRows[m.Owner+"/"+m.Name] // read from the old ledger table
+	return at, ok
+}
+if _, err := led.AdoptDB(ctx, db, ran, all...); err != nil {
+	return err
+}
+applied, err := led.ApplyDB(ctx, db, all...)
+```
+
+`Adopt` writes the rows `Apply` would have written, with `migrate.Checksum` of the scripts the code holds now, in one transaction and under the same lock as `Apply`. Two processes starting together, or an old release and a new one deploying together, serialize. If the old code took a lock of its own, give `NewLedger` that same lock, so old and new releases wait for each other: `EngineLock` on Postgres keys its advisory lock by the first eight bytes of the name's SHA-256, and any other scheme is a `migrate.Locker` of your own. Adopting again on the next start records nothing, so the step can stay in the start-up path until every database has moved, and then it and the old table can go. A migration already in the new ledger under a different checksum is `migrate.ErrChecksumMismatch`, exactly as from `Apply`.
+
+A module that also offered its users an offline script, for teams that apply schema changes by hand, writes it with `led.Script(pending...)`: the ledger's `CREATE TABLE`, each migration's statements, and the row that records it, built by the code `Apply` runs, so a later `Apply` skips them. `led.WithClock` fixes the recorded time, so the script's text is the same on every run.
+
+`TestAdopt_ExistingHistoryThenApply` and the adoption suite in `contrib/migrate/enginetest` run this flow on SQLite and Postgres, with the MySQL suite there for the scratch container.
 
 ## Step 6: the queries
 

@@ -74,6 +74,8 @@ type Ledger struct {
 	// refuseUnknown is RefuseUnknown's switch; false, the zero value, keeps
 	// Apply's original behaviour of ignoring rows it was not given.
 	refuseUnknown bool
+	// clock is WithClock's time source; nil, the zero value, is time.Now.
+	clock *clock
 }
 
 // The ledger table's columns. Owner and name are its key, which is why both
@@ -321,23 +323,61 @@ func unknown(recorded []AppliedMigration, ms []Migration) []string {
 // wait for each other instead of one failing with SQLITE_BUSY; see
 // ledger_sqlite.go for the two refusals that used to escape.
 func (l Ledger) Apply(ctx context.Context, conn *sql.Conn, ms ...Migration) (applied []string, err error) {
+	err = l.locked(ctx, conn, ms, func(done map[[2]string]string, begin beginner) error {
+		for _, m := range ms {
+			sum := Checksum(m.Script)
+			if prev, ok := done[[2]string{m.Owner, m.Name}]; ok {
+				if prev != sum {
+					return fmt.Errorf("%w: %s/%s", ErrChecksumMismatch, m.Owner, m.Name)
+				}
+				continue
+			}
+			script, err := l.withRecord(m, sum, l.now())
+			if err != nil {
+				return err
+			}
+			if err := execute(ctx, conn, script, begin); err != nil {
+				return fmt.Errorf("migrate: %s/%s: %w", m.Owner, m.Name, err)
+			}
+			applied = append(applied, m.Owner+"/"+m.Name)
+		}
+		return nil
+	})
+	return applied, err
+}
+
+// validate refuses, before anything touches a database, a migration with no
+// owner, name or script, or a name given twice.
+func validate(ms []Migration) error {
 	seen := map[[2]string]bool{}
 	for _, m := range ms {
 		k := [2]string{m.Owner, m.Name}
 		if m.Owner == "" || m.Name == "" || len(m.Script) == 0 || seen[k] {
-			return nil, fmt.Errorf("%w: %q/%q", ErrBadMigration, m.Owner, m.Name)
+			return fmt.Errorf("%w: %q/%q", ErrBadMigration, m.Owner, m.Name)
 		}
 		seen[k] = true
 	}
+	return nil
+}
+
+// locked is what Apply and Adopt share, so the two serialize on one lock and
+// judge the ledger by one rule: it validates ms, takes the lock, creates the
+// ledger table if needed, reads every row, applies RefuseUnknown, and hands
+// fn the recorded checksums by owner and name, with the transaction opener
+// for the engine. The lock is released whatever fn returns.
+func (l Ledger) locked(ctx context.Context, conn *sql.Conn, ms []Migration, fn func(done map[[2]string]string, begin beginner) error) (err error) {
+	if err := validate(ms); err != nil {
+		return err
+	}
 	if l.dialect == nil {
-		return nil, fmt.Errorf("%w: a zero Ledger; use NewLedger", ErrNoLedgerDialect)
+		return fmt.Errorf("%w: a zero Ledger; use NewLedger", ErrNoLedgerDialect)
 	}
 	create, err := l.createLedger()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if err := l.lock.Lock(ctx, conn); err != nil {
-		return nil, err
+		return err
 	}
 	defer func() {
 		// The unlock runs on a fresh context: one that ended is why an
@@ -348,40 +388,33 @@ func (l Ledger) Apply(ctx context.Context, conn *sql.Conn, ms ...Migration) (app
 	}()
 	begin := l.beginner()
 	if err := execute(ctx, conn, create, begin); err != nil {
-		return nil, err
+		return err
 	}
 	recorded, err := l.rows(ctx, conn)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if l.refuseUnknown {
 		if names := unknown(recorded, ms); len(names) > 0 {
-			return nil, fmt.Errorf("%w: %s", ErrUnknownMigration, strings.Join(names, ", "))
+			return fmt.Errorf("%w: %s", ErrUnknownMigration, strings.Join(names, ", "))
 		}
 	}
 	done := make(map[[2]string]string, len(recorded))
 	for _, r := range recorded {
 		done[[2]string{r.Owner, r.Name}] = r.Checksum
 	}
-	for _, m := range ms {
-		sum := Checksum(m.Script)
-		if prev, ok := done[[2]string{m.Owner, m.Name}]; ok {
-			if prev != sum {
-				return applied, fmt.Errorf("%w: %s/%s", ErrChecksumMismatch, m.Owner, m.Name)
-			}
-			continue
-		}
-		row, err := l.record(m, sum, time.Now())
-		if err != nil {
-			return applied, err
-		}
-		script := append(append(ddl.Script{}, m.Script...), row)
-		if err := execute(ctx, conn, script, begin); err != nil {
-			return applied, fmt.Errorf("migrate: %s/%s: %w", m.Owner, m.Name, err)
-		}
-		applied = append(applied, m.Owner+"/"+m.Name)
+	return fn(done, begin)
+}
+
+// withRecord is m's script followed by the statement recording it: what Apply
+// executes for one migration and what Script emits for it, built here once so
+// the two cannot differ.
+func (l Ledger) withRecord(m Migration, sum string, at time.Time) (ddl.Script, error) {
+	row, err := l.record(m, sum, at)
+	if err != nil {
+		return nil, err
 	}
-	return applied, nil
+	return append(append(ddl.Script{}, m.Script...), row), nil
 }
 
 // ApplyDB pins one connection from db and runs Apply on it. On SQLite an
