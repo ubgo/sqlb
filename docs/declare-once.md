@@ -173,29 +173,37 @@ Databases already exist that the old module created with `CREATE TABLE IF NOT EX
 Step 5 fits a schema the old module created in one step. A module that already has a ledger of its own is different: its users' databases hold a history of numbered migrations, some from the module and some contributed by plugins under their own owners, and most of them `ALTER TABLE ... ADD COLUMN`, which has no `IF NOT EXISTS` on SQLite or MySQL. Folding that history into one idempotent 0001 is not possible, and running it again fails. The ledger adopts it instead:
 
 1. Turn every migration the old ledger could have recorded into a `migrate.Migration` with the same owner and name, its script written with the `ddl` builders. Released migrations keep their numbers; nothing is renumbered.
-2. At start-up, if the old ledger table exists, read its rows. Where the old ledger kept checksums, check each against the old script by the old algorithm first, and refuse to start on a mismatch, as the old code would have.
-3. Call `Adopt` with every migration the code knows and a `migrate.Ran` that answers from those rows: which migrations ran, and when. Then call `Apply` with the same list, which runs only what the old ledger did not list.
+2. Write the read of the old ledger as a `migrate.PrepareRan`: given the ledger's connection, it checks whether the old ledger table exists, reads its rows and returns a `migrate.Ran` that answers from them: which migrations ran, and when. Where the old ledger kept checksums, it checks each against the old script by the old algorithm first and returns an error on a mismatch, as the old code would have refused to start.
+3. Call `AdoptPreparedDB` with every migration the code knows and that read. Then call `Apply` with the same list, which runs only what the old ledger did not list.
 
 ```go
 led, err := migrate.NewLedger(d, prefix+"sqlb_migrations", migrate.EngineLock(d, prefix+"acme/widgets"))
 if err != nil {
 	return err
 }
-ran := func(m migrate.Migration) (time.Time, bool) {
-	at, ok := oldRows[m.Owner+"/"+m.Name] // read from the old ledger table
-	return at, ok
+readOld := func(ctx context.Context, conn *sql.Conn) (migrate.Ran, error) {
+	oldRows, err := readOldLedger(ctx, conn) // on conn, not on db; nil when the table is not there
+	if err != nil {
+		return nil, err // nothing is recorded, and AdoptPreparedDB returns this error wrapped
+	}
+	return func(m migrate.Migration) (time.Time, bool) {
+		at, ok := oldRows[m.Owner+"/"+m.Name]
+		return at, ok
+	}, nil
 }
-if _, err := led.AdoptDB(ctx, db, ran, all...); err != nil {
+if _, err := led.AdoptPreparedDB(ctx, db, readOld, all...); err != nil {
 	return err
 }
 applied, err := led.ApplyDB(ctx, db, all...)
 ```
 
-`Adopt` writes the rows `Apply` would have written, with `migrate.Checksum` of the scripts the code holds now, in one transaction and under the same lock as `Apply`. Two processes starting together, or an old release and a new one deploying together, serialize. If the old code took a lock of its own, give `NewLedger` that same lock, so old and new releases wait for each other: `EngineLock` on Postgres keys its advisory lock by the first eight bytes of the name's SHA-256, and any other scheme is a `migrate.Locker` of your own. Adopting again on the next start records nothing, so the step can stay in the start-up path until every database has moved, and then it and the old table can go. A migration already in the new ledger under a different checksum is `migrate.ErrChecksumMismatch`, exactly as from `Apply`.
+Read the old ledger inside the prepare step, on the connection it is given, rather than on `db` before adopting. The step runs once the ledger holds its lock, so two processes starting together never read a half-adopted history; on SQLite it runs on the connection whose open the ledger waited out. A read on a connection of your own fails at start-up on SQLite: when two processes open a fresh file with `journal_mode(WAL)` in the DSN, the one converting the file to WAL refuses the other's first statement with `database is locked`, whatever the busy timeout says. An error from the step stops the adoption with nothing recorded and comes back wrapped, so `errors.Is` finds your own error. `Adopt` with a plain `migrate.Ran` stays for a caller whose answer needs no database read.
+
+`AdoptPreparedDB` writes the rows `Apply` would have written, with `migrate.Checksum` of the scripts the code holds now, in one transaction and under the same lock as `Apply`. Two processes starting together, or an old release and a new one deploying together, serialize. If the old code took a lock of its own, give `NewLedger` that same lock, so old and new releases wait for each other: `EngineLock` on Postgres keys its advisory lock by the first eight bytes of the name's SHA-256, and any other scheme is a `migrate.Locker` of your own. Adopting again on the next start records nothing, so the step can stay in the start-up path until every database has moved, and then it and the old table can go. A migration already in the new ledger under a different checksum is `migrate.ErrChecksumMismatch`, exactly as from `Apply`.
 
 A module that also offered its users an offline script, for teams that apply schema changes by hand, writes it with `led.Script(pending...)`: the ledger's `CREATE TABLE`, each migration's statements, and the row that records it, built by the code `Apply` runs, so a later `Apply` skips them. `led.WithClock` fixes the recorded time, so the script's text is the same on every run.
 
-`TestAdopt_ExistingHistoryThenApply` and the adoption suite in `contrib/migrate/enginetest` run this flow on SQLite and Postgres, with the MySQL suite there for the scratch container.
+`TestAdopt_ExistingHistoryThenApply`, the adoption suite and the prepared-adoption suite in `contrib/migrate/enginetest` run this flow on SQLite and Postgres, with the MySQL suites there for the scratch container; `TestAdoptPrepared_TwoProcessesReadTheirOldLedgerOnAFreshWALFile` runs two processes on 200 fresh WAL files, each reading its old ledger inside the prepare step, and requires every call to succeed.
 
 ## Step 6: the queries
 
