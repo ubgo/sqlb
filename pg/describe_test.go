@@ -1,9 +1,12 @@
 package pg_test
 
 import (
+	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/ubgo/sqlb"
 	"github.com/ubgo/sqlb/ddl"
 	"github.com/ubgo/sqlb/pg"
 	"github.com/ubgo/sqlb/schema"
@@ -44,5 +47,51 @@ func TestDescribe_PostgresKeysAndReferences(t *testing.T) {
 	}
 	if err := set.Validate(); err != nil {
 		t.Fatalf("the described set is invalid: %v", err)
+	}
+}
+
+// TestDescribe_PostgresCreateIndex pins what a CREATE INDEX describes: its
+// columns, uniqueness, every key's order as the builder was given it, and a
+// partial index's predicate exactly as Build writes it; an expression key is
+// refused rather than described as a column list, and a statement Build
+// refuses is not described.
+func TestDescribe_PostgresCreateIndex(t *testing.T) {
+	stmt := pg.CreateIndex(pg.Index{Name: "users_recent"}, tUsers).Unique().
+		On(pg.IndexKey(tTenantID), pg.IndexKey(tUserID).Desc().NullsLast(), pg.IndexKey(tEmail).Asc()).
+		Where(sqlb.IsNull(tEmail))
+	got, err := stmt.Describe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := schema.Index{
+		Name: "users_recent", Columns: []string{"tenant_id", "id", "email"}, Unique: true,
+		Orders: []schema.KeyOrder{{}, {Direction: schema.Descending, Nulls: schema.NullsLast}, {Direction: schema.Ascending}},
+		Where:  `"email" IS NULL`,
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v\nwant %+v", got, want)
+	}
+	s, err := stmt.Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(s[0].SQL, " WHERE "+want.Where) {
+		t.Fatalf("the description's predicate is not the one Build writes: %s", s[0].SQL)
+	}
+	if err := (schema.Table{Name: "users", Columns: []schema.Column{{Name: "id", Type: schema.TypeBigInt}, {Name: "tenant_id", Type: schema.TypeBigInt}, {Name: "email", Type: schema.TypeText}}, Indexes: []schema.Index{got}}).Validate(); err != nil {
+		t.Fatalf("a described index does not validate: %v", err)
+	}
+	plain, err := pg.CreateIndex(pg.Index{Name: "users_email"}, tUsers).On(pg.IndexKey(tEmail)).Describe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(plain, schema.Index{Name: "users_email", Columns: []string{"email"}, Orders: []schema.KeyOrder{{}}}) {
+		t.Fatalf("plain: %+v", plain)
+	}
+	if _, err := pg.CreateIndex(pg.Index{Name: "users_lower"}, tUsers).On(pg.IndexExpr(sqlb.Lower(tEmail))).Describe(); !errors.Is(err, ddl.ErrNotDescribable) {
+		t.Fatalf("an expression key: %v", err)
+	}
+	if _, err := pg.CreateIndex(pg.Index{Name: "x"}, tUsers).On(pg.IndexKey(sqlb.Col[int64](tSessions, "id"))).Describe(); !errors.Is(err, ddl.ErrForeignColumn) {
+		t.Fatalf("a statement Build refuses: %v", err)
 	}
 }

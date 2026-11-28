@@ -148,3 +148,29 @@ func TestSet_AReferenceToAColumnTheOtherTableDoesNotDeclare(t *testing.T) {
 		}
 	}
 }
+
+// TestIndex_ValidateChecksOrders pins the checks on an index's key orders:
+// one per column when stated, and only the directions and NULLS placements
+// the package defines. An index that states none is valid, as it always was.
+func TestIndex_ValidateChecksOrders(t *testing.T) {
+	base := schema.Table{Name: "runs", Columns: []schema.Column{{Name: "a", Type: schema.TypeInt}, {Name: "b", Type: schema.TypeInt}}}
+	ok := base
+	ok.Indexes = []schema.Index{
+		{Name: "plain", Columns: []string{"a", "b"}},
+		{Name: "ordered", Columns: []string{"a", "b"}, Orders: []schema.KeyOrder{{}, {Direction: schema.Descending, Nulls: schema.NullsLast}}, Where: "b IS NULL"},
+	}
+	if err := ok.Validate(); err != nil {
+		t.Fatalf("valid orders refused: %v", err)
+	}
+	bad := base
+	bad.Indexes = []schema.Index{
+		{Name: "short", Columns: []string{"a", "b"}, Orders: []schema.KeyOrder{{}}},
+		{Name: "odd", Columns: []string{"a"}, Orders: []schema.KeyOrder{{Direction: "UP", Nulls: "NULLS SOMEWHERE"}}},
+	}
+	err := bad.Validate()
+	for _, want := range []string{`index "short" on "runs" has 2 columns but 1 key orders`, `unknown direction "UP"`, `unknown nulls order "NULLS SOMEWHERE"`} {
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("the report does not mention %q: %v", want, err)
+		}
+	}
+}

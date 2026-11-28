@@ -110,8 +110,45 @@ func NewTables(prefix string) (Tables, error) {
 }
 
 // Index names, derived from the real table names so the prefix reaches them.
-func (t Tables) emailKey() string  { return t.Accounts.Name + "_email_key" }
-func (t Tables) teamIndex() string { return t.Members.Name + "_team_idx" }
+func (t Tables) emailKey() string   { return t.Accounts.Name + "_email_key" }
+func (t Tables) teamIndex() string  { return t.Members.Name + "_team_idx" }
+func (t Tables) ownerIndex() string { return t.Members.Name + "_owner_idx" }
+
+// indexStmt is a CREATE INDEX and the schema.Index it creates. Each index is
+// written once, below, and used both by the migration that creates it and by
+// the declaration's description, so the two cannot disagree about its
+// columns, its order or its predicate.
+type indexStmt interface {
+	Build() (ddl.Script, error)
+	Describe() (schema.Index, error)
+}
+
+// emailIndex is the unique index ON CONFLICT names.
+func (t Tables) emailIndex(e Engine) indexStmt {
+	if e == SQLite {
+		return sqlite.CreateIndex(sqlite.Index{Name: t.emailKey()}, t.Accounts).Unique().IfNotExists().On(sqlite.IndexKey(t.AccountEmail))
+	}
+	return pg.CreateIndex(pg.Index{Name: t.emailKey()}, t.Accounts).Unique().IfNotExists().On(pg.IndexKey(t.AccountEmail))
+}
+
+// teamIndexStmt lists a team's members.
+func (t Tables) teamIndexStmt(e Engine) indexStmt {
+	if e == SQLite {
+		return sqlite.CreateIndex(sqlite.Index{Name: t.teamIndex()}, t.Members).IfNotExists().On(sqlite.IndexKey(t.MemberTeam))
+	}
+	return pg.CreateIndex(pg.Index{Name: t.teamIndex()}, t.Members).IfNotExists().On(pg.IndexKey(t.MemberTeam))
+}
+
+// ownerIndexStmt is a partial index: a team's owners, a handful of rows among
+// many members, so only those rows are indexed.
+func (t Tables) ownerIndexStmt(e Engine) indexStmt {
+	if e == SQLite {
+		return sqlite.CreateIndex(sqlite.Index{Name: t.ownerIndex()}, t.Members).IfNotExists().
+			On(sqlite.IndexKey(t.MemberTeam)).Where(sqlb.Eq(t.MemberRole, "owner"))
+	}
+	return pg.CreateIndex(pg.Index{Name: t.ownerIndex()}, t.Members).IfNotExists().
+		On(pg.IndexKey(t.MemberTeam)).Where(sqlb.Eq(t.MemberRole, "owner"))
+}
 
 // Declaration is the library's tables as they are now: one CREATE TABLE per
 // table and the indexes beside it, rendered for engine. Describe on these is
@@ -119,26 +156,28 @@ func (t Tables) teamIndex() string { return t.Members.Name + "_team_idx" }
 // fresh database is never created from them directly, but from Migrations,
 // and the tests prove the two end in the same schema.
 func (t Tables) Declaration(e Engine) ([]Describer, error) {
+	accountIndexes := []indexStmt{t.emailIndex(e)}
+	memberIndexes := []indexStmt{t.teamIndexStmt(e), t.ownerIndexStmt(e)}
 	switch e {
 	case Postgres:
 		return []Describer{
 			indexed{pg.CreateTable(t.Accounts).
 				Column(t.defID, t.defEmail, t.defActive, t.defCreatedAt, t.defBirthday, t.defProfile, t.defAvatar).
-				Clause(pg.PrimaryKey(t.AccountID)), []schema.Index{{Name: t.emailKey(), Columns: []string{"email"}, Unique: true}}},
+				Clause(pg.PrimaryKey(t.AccountID)), accountIndexes},
 			indexed{pg.CreateTable(t.Members).
 				Column(t.defMemberAccount, t.defTeam, t.defRole).
 				Clause(pg.PrimaryKey(t.MemberAccountID, t.MemberTeam), pg.References(t.MemberAccountID, t.AccountID).OnDelete(pg.RefCascade)),
-				[]schema.Index{{Name: t.teamIndex(), Columns: []string{"team"}}}},
+				memberIndexes},
 		}, nil
 	case SQLite:
 		return []Describer{
 			indexed{sqlite.CreateTable(t.Accounts).
 				Column(t.defID, t.defEmail, t.defActive, t.defCreatedAt, t.defBirthday, t.defProfile, t.defAvatar).
-				Clause(sqlite.PrimaryKey(t.AccountID)), []schema.Index{{Name: t.emailKey(), Columns: []string{"email"}, Unique: true}}},
+				Clause(sqlite.PrimaryKey(t.AccountID)), accountIndexes},
 			indexed{sqlite.CreateTable(t.Members).
 				Column(t.defMemberAccount, t.defTeam, t.defRole).
 				Clause(sqlite.PrimaryKey(t.MemberAccountID, t.MemberTeam), sqlite.References(t.MemberAccountID, t.AccountID).OnDelete(sqlite.RefCascade)),
-				[]schema.Index{{Name: t.teamIndex(), Columns: []string{"team"}}}},
+				memberIndexes},
 		}, nil
 	}
 	return nil, ErrEngine
@@ -152,10 +191,11 @@ type Describer interface {
 }
 
 // indexed adds the table's separately created indexes to its description,
-// because CREATE TABLE describes only the keys written inside it.
+// because CREATE TABLE describes only the keys written inside it. Each index
+// describes itself, predicate and key order included.
 type indexed struct {
 	create  Describer
-	indexes []schema.Index
+	indexes []indexStmt
 }
 
 func (x indexed) Build() (ddl.Script, error) { return x.create.Build() }
@@ -165,7 +205,13 @@ func (x indexed) Describe() (schema.Table, error) {
 	if err != nil {
 		return schema.Table{}, err
 	}
-	d.Indexes = append(d.Indexes, x.indexes...)
+	for _, ix := range x.indexes {
+		desc, err := ix.Describe()
+		if err != nil {
+			return schema.Table{}, err
+		}
+		d.Indexes = append(d.Indexes, desc)
+	}
 	return d, nil
 }
 
@@ -211,30 +257,33 @@ func (t Tables) Migrations(e Engine) ([]Migration, error) {
 	case Postgres:
 		m1 = []func() (ddl.Script, error){
 			pg.CreateTable(t.Accounts).IfNotExists().Column(t.defID, t.defEmail, t.defActive, t.defCreatedAt).Clause(pg.PrimaryKey(t.AccountID)).Build,
-			pg.CreateIndex(pg.Index{Name: t.emailKey()}, t.Accounts).Unique().IfNotExists().On(pg.IndexKey(t.AccountEmail)).Build,
+			t.emailIndex(e).Build,
 			pg.CreateTable(t.Members).IfNotExists().Column(t.defMemberAccount, t.defTeam, t.defRole).
 				Clause(pg.PrimaryKey(t.MemberAccountID, t.MemberTeam), pg.References(t.MemberAccountID, t.AccountID).OnDelete(pg.RefCascade)).Build,
 		}
 		m2 = []func() (ddl.Script, error){
 			pg.AlterTable(t.Accounts).Action(ddl.AddColumn(t.defBirthday), ddl.AddColumn(t.defProfile), ddl.AddColumn(t.defAvatar)).Build,
-			pg.CreateIndex(pg.Index{Name: t.teamIndex()}, t.Members).IfNotExists().On(pg.IndexKey(t.MemberTeam)).Build,
+			t.teamIndexStmt(e).Build,
 		}
 	case SQLite:
 		m1 = []func() (ddl.Script, error){
 			sqlite.CreateTable(t.Accounts).IfNotExists().Column(t.defID, t.defEmail, t.defActive, t.defCreatedAt).Clause(sqlite.PrimaryKey(t.AccountID)).Build,
-			sqlite.CreateIndex(sqlite.Index{Name: t.emailKey()}, t.Accounts).Unique().IfNotExists().On(sqlite.IndexKey(t.AccountEmail)).Build,
+			t.emailIndex(e).Build,
 			sqlite.CreateTable(t.Members).IfNotExists().Column(t.defMemberAccount, t.defTeam, t.defRole).
 				Clause(sqlite.PrimaryKey(t.MemberAccountID, t.MemberTeam), sqlite.References(t.MemberAccountID, t.AccountID).OnDelete(sqlite.RefCascade)).Build,
 		}
 		m2 = []func() (ddl.Script, error){
 			sqlite.AlterTable(t.Accounts).Action(ddl.AddColumn(t.defBirthday), ddl.AddColumn(t.defProfile), ddl.AddColumn(t.defAvatar)).Build,
-			sqlite.CreateIndex(sqlite.Index{Name: t.teamIndex()}, t.Members).IfNotExists().On(sqlite.IndexKey(t.MemberTeam)).Build,
+			t.teamIndexStmt(e).Build,
 		}
 	default:
 		return nil, ErrEngine
 	}
-	out := make([]Migration, 0, 2)
-	for i, steps := range [][]func() (ddl.Script, error){m1, m2} {
+	// Release 3 added the partial owner index, the same value the
+	// declaration describes.
+	m3 := []func() (ddl.Script, error){t.ownerIndexStmt(e).Build}
+	out := make([]Migration, 0, 3)
+	for i, steps := range [][]func() (ddl.Script, error){m1, m2, m3} {
 		var s ddl.Script
 		for _, build := range steps {
 			part, err := build()

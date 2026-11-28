@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql/driver"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -119,11 +120,12 @@ func TestReadCatalogue_FailsOnEveryDatabaseError(t *testing.T) {
 func TestReadKeys_ParsesAndFails(t *testing.T) {
 	ctx := context.Background()
 	sep := "\x1f"
-	pgIdx := fakeQuery{match: "FROM pg_index", cols: []string{"s", "t", "p", "u", "c", "n"}, rows: [][]driver.Value{
-		{"public", "orders", true, true, "a" + sep + "b", "orders_pkey"},
-		{"public", "orders", false, true, "code", "orders_code"},
-		{"auth", "users", true, true, "id", "users_pkey"},
-		{"public", "bare", false, false, nil, "bare_idx"},
+	pgIdx := fakeQuery{match: "FROM pg_index", cols: []string{"s", "t", "p", "u", "c", "n", "o", "w"}, rows: [][]driver.Value{
+		{"public", "orders", true, true, "a" + sep + "b", "orders_pkey", "0" + sep + "0", nil},
+		{"public", "orders", false, true, "code", "orders_code", "0", nil},
+		{"auth", "users", true, true, "id", "users_pkey", "0", nil},
+		{"public", "bare", false, false, nil, "bare_idx", nil, nil},
+		{"public", "runs", false, false, "account_id" + sep + "started_at", "runs_recent", "0" + sep + "3", "(record_path IS NULL)"},
 	}}
 	pgFK := fakeQuery{match: "FROM pg_constraint", cols: []string{"s", "t", "n", "rs", "rt", "d", "u", "c", "rc"}, rows: [][]driver.Value{
 		{"public", "orders", "orders_user_fk", "auth", "users", "c", "a", "user_id", "id"},
@@ -143,6 +145,17 @@ func TestReadKeys_ParsesAndFails(t *testing.T) {
 	if fk := o.ForeignKeys[0]; fk.RefTable != "auth.users" || fk.OnDelete != schema.Cascade || fk.OnUpdate != schema.NoAction {
 		t.Fatalf("pg foreign key: %+v", fk)
 	}
+	// indoption 3 is DESC (1) with NULLS FIRST (2); 0 is ASC NULLS LAST.
+	runs := keys.Tables["runs"].Indexes
+	wantOrders := []schema.KeyOrder{{Direction: schema.Ascending, Nulls: schema.NullsLast}, {Direction: schema.Descending, Nulls: schema.NullsFirst}}
+	if len(runs) != 1 || !slices.Equal(runs[0].Orders, wantOrders) || runs[0].Where != "(record_path IS NULL)" {
+		t.Fatalf("pg key orders and predicate: %+v", runs)
+	}
+	badOption := pgIdx
+	badOption.rows = [][]driver.Value{{"public", "runs", false, false, "a", "runs_a", "x", nil}}
+	if _, err := vet.ReadKeys(ctx, (&faultDB{queries: []fakeQuery{pgDef, badOption, pgFK}}).open(), render.DialectPostgres); err == nil {
+		t.Error("an indoption word that is not a number read cleanly")
+	}
 	badAction := pgFK
 	badAction.rows = [][]driver.Value{{"public", "orders", "fk", "public", "users", "z", "a", "user_id", "id"}}
 	if _, err := vet.ReadKeys(ctx, (&faultDB{queries: []fakeQuery{pgDef, pgIdx, badAction}}).open(), render.DialectPostgres); !errors.Is(err, vet.ErrUnknownAction) {
@@ -150,12 +163,12 @@ func TestReadKeys_ParsesAndFails(t *testing.T) {
 	}
 
 	myDef := fakeQuery{match: "SELECT DATABASE()", cols: []string{"d"}, rows: [][]driver.Value{{"app"}}}
-	myIdx := fakeQuery{match: "information_schema.statistics", cols: []string{"s", "t", "i", "u", "c"}, rows: [][]driver.Value{
-		{"app", "orders", "PRIMARY", true, "id"},
-		{"app", "orders", "orders_code", true, "code"},
-		{"app", "orders", "orders_expr", false, nil},
-		{"app", "orders", "orders_ab", false, "a"},
-		{"app", "orders", "orders_ab", false, "b"},
+	myIdx := fakeQuery{match: "information_schema.statistics", cols: []string{"s", "t", "i", "u", "c", "o"}, rows: [][]driver.Value{
+		{"app", "orders", "PRIMARY", true, "id", "A"},
+		{"app", "orders", "orders_code", true, "code", "A"},
+		{"app", "orders", "orders_expr", false, nil, "A"},
+		{"app", "orders", "orders_ab", false, "a", "A"},
+		{"app", "orders", "orders_ab", false, "b", "D"},
 	}}
 	myFK := fakeQuery{match: "key_column_usage", cols: []string{"s", "t", "n", "c", "rs", "rt", "rc", "d", "u"}, rows: [][]driver.Value{
 		{"app", "orders", "fk", "a", "app", "p", "x", "CASCADE", "NO ACTION"},
@@ -168,6 +181,9 @@ func TestReadKeys_ParsesAndFails(t *testing.T) {
 	o = keys.Tables["orders"]
 	if o.PrimaryKey[0] != "id" || len(o.Indexes) != 2 || strings.Join(o.Indexes[1].Columns, ",") != "a,b" {
 		t.Fatalf("mysql indexes (the expression index must be skipped): %+v", o.Indexes)
+	}
+	if got := o.Indexes[1].Orders; len(got) != 2 || got[0].Direction != schema.Ascending || got[1].Direction != schema.Descending {
+		t.Fatalf("mysql key directions: %+v", got)
 	}
 	if fk := o.ForeignKeys[0]; strings.Join(fk.Columns, ",") != "a,b" || strings.Join(fk.RefColumns, ",") != "x,y" || fk.RefTable != "app.p" {
 		t.Fatalf("mysql foreign key: %+v", fk)
@@ -205,20 +221,32 @@ func TestReadKeys_ParsesAndFails(t *testing.T) {
 		"sqlite index info refused": {render.DialectSQLite, []fakeQuery{
 			{match: "pragma_table_list", cols: []string{"name"}, rows: [][]driver.Value{{"t"}}},
 			{match: "pragma_table_info", cols: []string{"name"}},
-			{match: "pragma_index_list", cols: []string{"name", "unique"}, rows: [][]driver.Value{{"i", int64(1)}}},
-			{match: "pragma_index_info", err: errBoom}}},
+			{match: "pragma_index_list", cols: []string{"name", "unique", "partial"}, rows: [][]driver.Value{{"i", int64(1), int64(0)}}},
+			{match: "pragma_index_xinfo", err: errBoom}}},
 		"sqlite index info no scan": {render.DialectSQLite, []fakeQuery{
 			{match: "pragma_table_list", cols: []string{"name"}, rows: [][]driver.Value{{"t"}}},
 			{match: "pragma_table_info", cols: []string{"name"}},
-			{match: "pragma_index_list", cols: []string{"name", "unique"}, rows: [][]driver.Value{{"i", int64(1)}}},
-			{match: "pragma_index_info", cols: []string{"a", "b"}, rows: [][]driver.Value{{"x", "y"}}}}},
+			{match: "pragma_index_list", cols: []string{"name", "unique", "partial"}, rows: [][]driver.Value{{"i", int64(1), int64(0)}}},
+			{match: "pragma_index_xinfo", cols: []string{"a", "b"}, rows: [][]driver.Value{{"x", "y"}}}}},
+		"sqlite index sql refused": {render.DialectSQLite, []fakeQuery{
+			{match: "pragma_table_list", cols: []string{"name"}, rows: [][]driver.Value{{"t"}}},
+			{match: "pragma_table_info", cols: []string{"name"}},
+			{match: "pragma_index_list", cols: []string{"name", "unique", "partial"}, rows: [][]driver.Value{{"i", int64(0), int64(1)}}},
+			{match: "pragma_index_xinfo", cols: []string{"name", "desc"}, rows: [][]driver.Value{{"n", int64(0)}}},
+			{match: "sqlite_master", err: errBoom}}},
+		"sqlite index sql has no WHERE": {render.DialectSQLite, []fakeQuery{
+			{match: "pragma_table_list", cols: []string{"name"}, rows: [][]driver.Value{{"t"}}},
+			{match: "pragma_table_info", cols: []string{"name"}},
+			{match: "pragma_index_list", cols: []string{"name", "unique", "partial"}, rows: [][]driver.Value{{"i", int64(0), int64(1)}}},
+			{match: "pragma_index_xinfo", cols: []string{"name", "desc"}, rows: [][]driver.Value{{"n", int64(0)}}},
+			{match: "sqlite_master", cols: []string{"sql"}, rows: [][]driver.Value{{"CREATE INDEX i ON t (n)"}}}}},
 		"sqlite foreign keys refused": {render.DialectSQLite, []fakeQuery{
 			{match: "pragma_table_list", cols: []string{"name"}, rows: [][]driver.Value{{"t"}}},
-			{match: "pragma_table_info", cols: []string{"name"}}, {match: "pragma_index_list", cols: []string{"name", "unique"}},
+			{match: "pragma_table_info", cols: []string{"name"}}, {match: "pragma_index_list", cols: []string{"name", "unique", "partial"}},
 			{match: "pragma_foreign_key_list", err: errBoom}}},
 		"sqlite foreign key no scan": {render.DialectSQLite, []fakeQuery{
 			{match: "pragma_table_list", cols: []string{"name"}, rows: [][]driver.Value{{"t"}}},
-			{match: "pragma_table_info", cols: []string{"name"}}, {match: "pragma_index_list", cols: []string{"name", "unique"}},
+			{match: "pragma_table_info", cols: []string{"name"}}, {match: "pragma_index_list", cols: []string{"name", "unique", "partial"}},
 			{match: "pragma_foreign_key_list", cols: []string{"a"}, rows: [][]driver.Value{{"x"}}}}},
 		"unknown dialect": {"oracle", nil},
 	} {

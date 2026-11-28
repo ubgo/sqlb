@@ -150,7 +150,7 @@ func TestTask_DeclareOnceWithAPrefix(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if ran := install(t, ctx, db, c, tables, prefix); !slices.Equal(ran, []string{widgets.Owner + "/0001", widgets.Owner + "/0002"}) {
+				if ran := install(t, ctx, db, c, tables, prefix); !slices.Equal(ran, []string{widgets.Owner + "/0001", widgets.Owner + "/0002", widgets.Owner + "/0003"}) {
 					t.Fatalf("%q: ran %v", prefix, ran)
 				}
 				if ran := install(t, ctx, db, c, tables, prefix); len(ran) != 0 {
@@ -222,8 +222,8 @@ func exercise(t *testing.T, ctx context.Context, db *sql.DB, c engineCase, table
 // TestTask_AdoptTablesAnEarlierReleaseCreated is the upgrade of a database an
 // earlier release created with hand-written CREATE TABLE IF NOT EXISTS
 // strings and no ledger: migration 0001 finds every table and index already
-// there and changes nothing, 0002 adds the new columns, the row survives and
-// the live schema matches the declaration.
+// there and changes nothing, 0002 adds the new columns, 0003 the partial
+// owner index, the row survives and the live schema matches the declaration.
 func TestTask_AdoptTablesAnEarlierReleaseCreated(t *testing.T) {
 	for _, c := range engineCases(t) {
 		t.Run(c.name, func(t *testing.T) {
@@ -242,7 +242,7 @@ func TestTask_AdoptTablesAnEarlierReleaseCreated(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if ran := install(t, ctx, db, c, tables, "legacy_"); !slices.Equal(ran, []string{widgets.Owner + "/0001", widgets.Owner + "/0002"}) {
+			if ran := install(t, ctx, db, c, tables, "legacy_"); !slices.Equal(ran, []string{widgets.Owner + "/0001", widgets.Owner + "/0002", widgets.Owner + "/0003"}) {
 				t.Fatalf("ran %v", ran)
 			}
 			selfCheck(t, ctx, db, c, tables)

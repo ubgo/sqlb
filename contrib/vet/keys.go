@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/ubgo/sqlb/render"
@@ -14,7 +15,9 @@ import (
 )
 
 // TableKeys is a table's keys as the database has them: its primary key, its
-// indexes on plain columns, and its foreign keys. An expression or partial
+// indexes on plain columns, and its foreign keys. Each index carries every
+// key's direction in Orders, with its NULLS placement on Postgres, and a
+// partial index its predicate in Where, as the engine prints it. An expression
 // index is left out, because schema.Index has no place for one and comparing
 // its column list alone would call it something it is not. RefTable on a
 // foreign key is always "schema.table".
@@ -41,20 +44,26 @@ const columnSep = "\x1f"
 // engine's own output on Postgres 17, MySQL 8.4 and SQLite 3.50.
 const (
 	// pgIndexQuery reads every index with its key columns in order: INCLUDE
-	// columns (beyond indnkeyatts) are not key columns, an expression key is
-	// attnum 0 and a partial index has indpred, and both are skipped.
+	// columns (beyond indnkeyatts) are not key columns, and an expression key
+	// is attnum 0 and its index is skipped. indoption holds one flag word per
+	// key column, bit 1 DESC and bit 2 NULLS FIRST; a partial index's
+	// predicate is pg_get_expr of indpred, NULL for an index that is not.
 	pgIndexQuery = `SELECT n.nspname, c.relname, i.indisprimary, i.indisunique,
 			(SELECT string_agg(a.attname, chr(31) ORDER BY k.ord)
 				FROM unnest(i.indkey::int2[]) WITH ORDINALITY AS k(attnum, ord)
 				JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum
 				WHERE k.ord <= i.indnkeyatts),
-			x.relname
+			x.relname,
+			(SELECT string_agg(o.opt::text, chr(31) ORDER BY o.ord)
+				FROM unnest(i.indoption::int2[]) WITH ORDINALITY AS o(opt, ord)
+				WHERE o.ord <= i.indnkeyatts),
+			pg_get_expr(i.indpred, i.indrelid)
 		FROM pg_index i
 		JOIN pg_class c ON c.oid = i.indrelid
 		JOIN pg_class x ON x.oid = i.indexrelid
 		JOIN pg_namespace n ON n.oid = c.relnamespace
 		WHERE n.nspname <> 'information_schema' AND left(n.nspname, 3) <> 'pg_'
-			AND i.indpred IS NULL AND NOT (0 = ANY (i.indkey::int2[]))`
+			AND NOT (0 = ANY (i.indkey::int2[]))`
 	// pgForeignKeyQuery reads each foreign key once: a partition's copy of its
 	// parent's key has conparentid set and is skipped.
 	pgForeignKeyQuery = `SELECT n.nspname, c.relname, con.conname, rn.nspname, rc.relname,
@@ -75,8 +84,10 @@ const (
 	pgDefaultSchemaQuery = `SELECT current_schema()`
 
 	// mysqlIndexQuery reads every index column in order; an expression key
-	// part has no column_name and makes its index skipped.
-	mysqlIndexQuery = `SELECT table_schema, table_name, index_name, non_unique = 0, column_name
+	// part has no column_name and makes its index skipped. collation is A for
+	// ascending, D for descending and NULL for a key that is not sorted, a
+	// HASH or FULLTEXT one. MySQL has no partial indexes.
+	mysqlIndexQuery = `SELECT table_schema, table_name, index_name, non_unique = 0, column_name, collation
 		FROM information_schema.statistics
 		WHERE table_schema NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')
 		ORDER BY table_schema, table_name, index_name, seq_in_index`
@@ -95,9 +106,14 @@ const (
 	sqliteKeyTablesQuery = `SELECT name FROM pragma_table_list WHERE schema = 'main' AND type = 'table' AND name NOT LIKE 'sqlite_%'`
 	sqlitePKQuery        = `SELECT name FROM pragma_table_info(?) WHERE pk > 0 ORDER BY pk`
 	// sqliteIndexListQuery skips the primary key's own index, which is the
-	// primary key, and partial indexes.
-	sqliteIndexListQuery = `SELECT name, "unique" FROM pragma_index_list(?) WHERE origin <> 'pk' AND partial = 0`
-	sqliteIndexInfoQuery = `SELECT name FROM pragma_index_info(?) ORDER BY seqno`
+	// primary key.
+	sqliteIndexListQuery = `SELECT name, "unique", partial FROM pragma_index_list(?) WHERE origin <> 'pk'`
+	// sqliteIndexInfoQuery reads the key columns with their direction; key = 0
+	// rows are the rowid and other auxiliary columns, not keys.
+	sqliteIndexInfoQuery = `SELECT name, "desc" FROM pragma_index_xinfo(?) WHERE key = 1 ORDER BY seqno`
+	// sqliteIndexSQLQuery reads a partial index's CREATE INDEX as written,
+	// which is the only place SQLite keeps its predicate.
+	sqliteIndexSQLQuery  = `SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ?`
 	sqliteForeignKeyList = `SELECT id, "table", "from", "to", on_delete, on_update FROM pragma_foreign_key_list(?) ORDER BY id, seq`
 )
 
@@ -161,16 +177,20 @@ func readPGKeys(ctx context.Context, db *sql.DB) (KeyCatalogue, error) {
 	err := eachRow(ctx, db, pgIndexQuery, nil, func(rows *sql.Rows) error {
 		var sch, table, name string
 		var primary, unique bool
-		var cols sql.NullString
-		if err := rows.Scan(&sch, &table, &primary, &unique, &cols, &name); err != nil {
+		var cols, opts, pred sql.NullString
+		if err := rows.Scan(&sch, &table, &primary, &unique, &cols, &name, &opts, &pred); err != nil {
 			return err
+		}
+		orders, err := pgOrders(opts)
+		if err != nil {
+			return fmt.Errorf("sqlb vet: keys: index %s: %w", name, err)
 		}
 		kb.update(sch, table, func(tk *TableKeys) {
 			if primary {
 				tk.PrimaryKey = splitCols(cols)
 				return
 			}
-			tk.Indexes = append(tk.Indexes, schema.Index{Name: name, Columns: splitCols(cols), Unique: unique})
+			tk.Indexes = append(tk.Indexes, schema.Index{Name: name, Columns: splitCols(cols), Unique: unique, Orders: orders, Where: pred.String})
 		})
 		return nil
 	})
@@ -202,6 +222,36 @@ func readPGKeys(ctx context.Context, db *sql.DB) (KeyCatalogue, error) {
 	return kb.cat, nil
 }
 
+// The indoption flags Postgres sets on an index key column.
+const (
+	pgIndOptionDesc       = 1
+	pgIndOptionNullsFirst = 2
+)
+
+// pgOrders turns indoption's per-key flag words into key orders, stating the
+// NULLS placement for every key because Postgres records one for every key.
+func pgOrders(opts sql.NullString) ([]schema.KeyOrder, error) {
+	words := splitCols(opts)
+	if words == nil {
+		return nil, nil
+	}
+	out := make([]schema.KeyOrder, len(words))
+	for i, w := range words {
+		n, err := strconv.Atoi(w)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = schema.KeyOrder{Direction: schema.Ascending, Nulls: schema.NullsLast}
+		if n&pgIndOptionDesc != 0 {
+			out[i].Direction = schema.Descending
+		}
+		if n&pgIndOptionNullsFirst != 0 {
+			out[i].Nulls = schema.NullsFirst
+		}
+	}
+	return out, nil
+}
+
 func readMySQLKeys(ctx context.Context, db *sql.DB) (KeyCatalogue, error) {
 	var def sql.NullString
 	if err := db.QueryRowContext(ctx, mysqlDefaultSchemaQuery).Scan(&def); err != nil {
@@ -212,14 +262,15 @@ func readMySQLKeys(ctx context.Context, db *sql.DB) (KeyCatalogue, error) {
 		sch, table, name string
 		unique, expr     bool
 		cols             []string
+		orders           []schema.KeyOrder
 	}
 	var order []string
 	byKey := map[string]*idx{}
 	err := eachRow(ctx, db, mysqlIndexQuery, nil, func(rows *sql.Rows) error {
 		var sch, table, name string
 		var unique bool
-		var col sql.NullString
-		if err := rows.Scan(&sch, &table, &name, &unique, &col); err != nil {
+		var col, coll sql.NullString
+		if err := rows.Scan(&sch, &table, &name, &unique, &col, &coll); err != nil {
 			return err
 		}
 		k := sch + "\x00" + table + "\x00" + name
@@ -234,6 +285,11 @@ func readMySQLKeys(ctx context.Context, db *sql.DB) (KeyCatalogue, error) {
 			return nil
 		}
 		x.cols = append(x.cols, col.String)
+		o := schema.KeyOrder{Direction: schema.Ascending}
+		if coll.String == "D" {
+			o.Direction = schema.Descending
+		}
+		x.orders = append(x.orders, o)
 		return nil
 	})
 	if err != nil {
@@ -249,7 +305,7 @@ func readMySQLKeys(ctx context.Context, db *sql.DB) (KeyCatalogue, error) {
 				tk.PrimaryKey = x.cols
 				return
 			}
-			tk.Indexes = append(tk.Indexes, schema.Index{Name: x.name, Columns: x.cols, Unique: x.unique})
+			tk.Indexes = append(tk.Indexes, schema.Index{Name: x.name, Columns: x.cols, Unique: x.unique, Orders: x.orders})
 		})
 	}
 	type fk struct {
@@ -318,13 +374,13 @@ func readSQLiteKeys(ctx context.Context, db *sql.DB) (KeyCatalogue, error) {
 	for _, t := range tables {
 		tk := TableKeys{PrimaryKey: pks[t]}
 		type listed struct {
-			name   string
-			unique bool
+			name            string
+			unique, partial bool
 		}
 		var idxs []listed
 		if err := eachRow(ctx, db, sqliteIndexListQuery, []any{t}, func(rows *sql.Rows) error {
 			var l listed
-			if err := rows.Scan(&l.name, &l.unique); err != nil {
+			if err := rows.Scan(&l.name, &l.unique, &l.partial); err != nil {
 				return err
 			}
 			idxs = append(idxs, l)
@@ -334,23 +390,43 @@ func readSQLiteKeys(ctx context.Context, db *sql.DB) (KeyCatalogue, error) {
 		}
 		for _, l := range idxs {
 			var cols []string
+			var orders []schema.KeyOrder
 			expr := false
 			if err := eachRow(ctx, db, sqliteIndexInfoQuery, []any{l.name}, func(rows *sql.Rows) error {
 				var c sql.NullString
-				if err := rows.Scan(&c); err != nil {
+				var desc bool
+				if err := rows.Scan(&c, &desc); err != nil {
 					return err
 				}
 				if !c.Valid {
 					expr = true
 				}
 				cols = append(cols, c.String)
+				o := schema.KeyOrder{Direction: schema.Ascending}
+				if desc {
+					o.Direction = schema.Descending
+				}
+				orders = append(orders, o)
 				return nil
 			}); err != nil {
 				return KeyCatalogue{}, err
 			}
-			if !expr {
-				tk.Indexes = append(tk.Indexes, schema.Index{Name: l.name, Columns: cols, Unique: l.unique})
+			if expr {
+				continue
 			}
+			ix := schema.Index{Name: l.name, Columns: cols, Unique: l.unique, Orders: orders}
+			if l.partial {
+				var create sql.NullString
+				if err := db.QueryRowContext(ctx, sqliteIndexSQLQuery, l.name).Scan(&create); err != nil {
+					return KeyCatalogue{}, fmt.Errorf("sqlb vet: keys: %w", err)
+				}
+				where, err := sqliteIndexPredicate(create.String)
+				if err != nil {
+					return KeyCatalogue{}, fmt.Errorf("%w: %s", err, l.name)
+				}
+				ix.Where = where
+			}
+			tk.Indexes = append(tk.Indexes, ix)
 		}
 		byID := map[int]*schema.ForeignKey{}
 		var ids []int
@@ -409,6 +485,16 @@ func eachRow(ctx context.Context, db *sql.DB, query string, args []any, fn func(
 //   - the primary key must be the same columns in the same order;
 //   - every index the DDL declares must exist over the same columns in the
 //     same order, and a unique one must be unique there;
+//   - an index whose description states Orders must sort every key the same
+//     way, FindingIndexOrder otherwise; an unstated direction is ascending,
+//     and an unstated NULLS placement is the default for its direction, and
+//     is judged only where the catalogue reports one (Postgres);
+//   - an index the DDL declares partial must be partial in the database and
+//     the reverse, and two predicates must be the same, FindingIndexPredicate
+//     otherwise. CompareKeys has no database to ask, so predicates whose
+//     normal forms differ are FindingIndexPredicateNotCompared, a warning;
+//     CheckTables asks the engine and reports them as same or different (the
+//     rule is in predicate.go and contrib/vet/README.md);
 //   - every foreign key the DDL declares must exist over the same columns,
 //     referencing the same table and columns, with the same ON DELETE and ON
 //     UPDATE, an unstated action being NO ACTION as every engine reports it.
@@ -421,9 +507,18 @@ func eachRow(ctx context.Context, db *sql.DB, query string, args []any, fn func(
 // not part of a CREATE TABLE's description. A table missing from keys is
 // CompareTables's finding and is skipped here.
 func CompareKeys(tables []schema.Table, keys KeyCatalogue) []Finding {
+	return compareKeys(tables, keys, textOnly)
+}
+
+// compareKeys is CompareKeys with the predicate comparer chosen by the
+// caller, which is how CheckTables lets the engine judge predicates.
+func compareKeys(tables []schema.Table, keys KeyCatalogue, samePredicate predicateComparer) []Finding {
 	var out []Finding
 	finding := func(pos, msg string, warn bool) {
 		out = append(out, Finding{Pos: pos, Analyzer: schemaAnalyzer, Message: msg, Warning: warn})
+	}
+	typed := func(pos string, kind FindingKind, msg string, warn bool) {
+		out = append(out, Finding{Pos: pos, Analyzer: schemaAnalyzer, Message: msg, Warning: warn, Kind: kind})
 	}
 	for _, t := range tables {
 		pos := CatalogueKey(t.Schema, t.Name)
@@ -436,7 +531,7 @@ func CompareKeys(tables []schema.Table, keys KeyCatalogue) []Finding {
 		}
 		usedIdx := map[int]bool{}
 		for _, want := range t.Indexes {
-			i := matchIndex(want, got.Indexes)
+			i := matchIndex(want, got.Indexes, usedIdx)
 			switch {
 			case i < 0:
 				finding(pos, fmt.Sprintf("the DDL's %s is not in the database", indexWord(want)), false)
@@ -445,6 +540,26 @@ func CompareKeys(tables []schema.Table, keys KeyCatalogue) []Finding {
 				usedIdx[i] = true
 			default:
 				usedIdx[i] = true
+			}
+			if i >= 0 {
+				g := got.Indexes[i]
+				if msg, differ := orderDifference(want, g); differ {
+					typed(pos, FindingIndexOrder, msg, false)
+				}
+				switch {
+				case want.Where != "" && g.Where == "":
+					typed(pos, FindingIndexPredicate, fmt.Sprintf("the DDL's %s is partial (WHERE %s) and the database's is not", indexWord(want), want.Where), false)
+				case want.Where == "" && g.Where != "":
+					typed(pos, FindingIndexPredicate, fmt.Sprintf("the database's %s is partial (WHERE %s) and the DDL's is not", indexWord(want), g.Where), false)
+				case want.Where != "":
+					switch m, why := samePredicate(t, want.Where, g.Where); m {
+					case predicateDifferent:
+						typed(pos, FindingIndexPredicate, fmt.Sprintf("the DDL's %s is WHERE %s, the database's is WHERE %s", indexWord(want), want.Where, g.Where), false)
+					case predicateNotCompared:
+						typed(pos, FindingIndexPredicateNotCompared, fmt.Sprintf("the %s is partial on both sides, not compared (%s): the DDL's is WHERE %s, the database's is WHERE %s", indexWord(want), why, want.Where, g.Where), true)
+					case predicateSame:
+					}
+				}
 			}
 		}
 		for i, g := range got.Indexes {
@@ -482,23 +597,93 @@ func CompareKeys(tables []schema.Table, keys KeyCatalogue) []Finding {
 	return out
 }
 
-// matchIndex finds the database index over the same columns, preferring one
-// whose uniqueness matches, since MySQL may hold a unique index and the plain
-// one it made for a foreign key over the same columns.
-func matchIndex(want schema.Index, got []schema.Index) int {
-	found := -1
+// matchIndex finds the database index over the same columns. Several may
+// share them, a partial index beside a full one, so it prefers, in order: one
+// no earlier declaration matched; one whose uniqueness matches, since MySQL
+// may hold a unique index and the plain one it made for a foreign key over the
+// same columns; one with the declared name; one that is partial exactly when
+// the declaration is.
+func matchIndex(want schema.Index, got []schema.Index, used map[int]bool) int {
+	found, best := -1, -1
 	for i, g := range got {
 		if !slices.Equal(g.Columns, want.Columns) {
 			continue
 		}
-		if g.Unique == want.Unique {
-			return i
+		score := 0
+		if !used[i] {
+			score += 8
 		}
-		if found < 0 {
-			found = i
+		if g.Unique == want.Unique {
+			score += 4
+		}
+		if want.Name != "" && g.Name == want.Name {
+			score += 2
+		}
+		if (g.Where == "") == (want.Where == "") {
+			score++
+		}
+		if score > best {
+			found, best = i, score
 		}
 	}
 	return found
+}
+
+// orderDifference compares the key orders of a declared index and the
+// database's, when the declaration states them. An unstated direction is
+// ascending; a NULLS placement is judged only when the catalogue reports one,
+// an unstated one being Postgres's default for the direction.
+func orderDifference(want, got schema.Index) (string, bool) {
+	if want.Orders == nil {
+		return "", false
+	}
+	var ddlSide, dbSide []string
+	for i, col := range want.Columns {
+		w := schema.KeyOrder{}
+		if i < len(want.Orders) {
+			w = want.Orders[i]
+		}
+		g := schema.KeyOrder{}
+		if i < len(got.Orders) {
+			g = got.Orders[i]
+		}
+		wDir, gDir := direction(w.Direction), direction(g.Direction)
+		same := wDir == gDir
+		wNulls, gNulls := "", ""
+		if g.Nulls != "" {
+			wNulls, gNulls = " "+string(nulls(w.Nulls, wDir)), " "+string(g.Nulls)
+			same = same && wNulls == gNulls
+		}
+		if !same {
+			ddlSide = append(ddlSide, col+" "+string(wDir)+wNulls)
+			dbSide = append(dbSide, col+" "+string(gDir)+gNulls)
+		}
+	}
+	if ddlSide == nil {
+		return "", false
+	}
+	return fmt.Sprintf("the DDL's %s sorts %s, the database's sorts %s", indexWord(want), strings.Join(ddlSide, ", "), strings.Join(dbSide, ", ")), true
+}
+
+// direction is an index key's direction with the unstated one as ascending,
+// which is what every engine does with it.
+func direction(d schema.Direction) schema.Direction {
+	if d == "" {
+		return schema.Ascending
+	}
+	return d
+}
+
+// nulls is a key's NULLS placement with the unstated one as Postgres's
+// default for the direction: last ascending, first descending.
+func nulls(n schema.NullsOrder, d schema.Direction) schema.NullsOrder {
+	switch {
+	case n != "":
+		return n
+	case d == schema.Descending:
+		return schema.NullsFirst
+	}
+	return schema.NullsLast
 }
 
 // sameTable reports whether a DDL reference and a catalogue's qualified name
@@ -527,7 +712,10 @@ func indexWord(ix schema.Index) string {
 }
 
 // CheckTables is the boot check in one call: it reads the column and key
-// catalogues and returns CompareTables's findings followed by CompareKeys's.
+// catalogues and returns CompareTables's findings followed by CompareKeys's,
+// except that two partial-index predicates whose texts differ are judged by
+// the engine (on Postgres by its canonical text, inside a transaction that is
+// rolled back; on SQLite by the stored text) instead of left not compared.
 func CheckTables(ctx context.Context, db *sql.DB, dialect string, tables []schema.Table) ([]Finding, error) {
 	cat, err := ReadCatalogue(ctx, db, dialect)
 	if err != nil {
@@ -537,5 +725,5 @@ func CheckTables(ctx context.Context, db *sql.DB, dialect string, tables []schem
 	if err != nil {
 		return nil, err
 	}
-	return append(CompareTables(dialect, tables, cat), CompareKeys(tables, keys)...), nil
+	return append(CompareTables(dialect, tables, cat), compareKeys(tables, keys, comparerFor(ctx, db, dialect))...), nil
 }

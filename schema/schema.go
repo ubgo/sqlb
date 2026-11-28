@@ -98,10 +98,52 @@ type Column struct {
 
 // Index is a secondary index declaration. The primary key is on Table, because
 // every engine treats it specially.
+//
+// Orders and Where are optional, and an index that sets neither means what it
+// always meant: its columns, in order, and whether it is unique.
 type Index struct {
 	Name    string
 	Columns []string
 	Unique  bool
+	// Orders is the sort order of each key, one per entry of Columns. Nil
+	// means the order was not stated, and a comparison does not judge it,
+	// which is how an index declared before this field existed keeps its
+	// meaning; a description made by an engine's CREATE INDEX builder states
+	// it for every key.
+	Orders []KeyOrder
+	// Where is a partial index's predicate, written as the engine's SQL with
+	// columns bare. Empty means the index is not partial. It is a string for
+	// the reason Column.Default is: the expression's spelling belongs to the
+	// engine, and comparing two spellings is the job of whatever reads the
+	// database, which can ask the engine.
+	Where string
+}
+
+// Direction is the sort order of one index key.
+type Direction string
+
+// The two directions. The empty Direction is ascending, the default every
+// engine applies when an index key states none.
+const (
+	Ascending  Direction = "ASC"
+	Descending Direction = "DESC"
+)
+
+// NullsOrder is where an index key sorts NULLs.
+type NullsOrder string
+
+// The two placements. The empty NullsOrder is the engine's default for the
+// key's direction: on Postgres NULLs sort last ascending and first
+// descending. Only Postgres lets an index state it.
+const (
+	NullsFirst NullsOrder = "NULLS FIRST"
+	NullsLast  NullsOrder = "NULLS LAST"
+)
+
+// KeyOrder is how one index key is sorted.
+type KeyOrder struct {
+	Direction Direction
+	Nulls     NullsOrder
 }
 
 // ForeignKey is a reference from this table to another.
@@ -299,6 +341,21 @@ func (t Table) checkRefs(cols map[string]bool) []error {
 		for _, c := range ix.Columns {
 			if !cols[c] {
 				errs = append(errs, fmt.Errorf("index %q on %q names column %q that the table does not declare", ix.Name, t.Name, c))
+			}
+		}
+		if ix.Orders != nil && len(ix.Orders) != len(ix.Columns) {
+			errs = append(errs, fmt.Errorf("index %q on %q has %d columns but %d key orders", ix.Name, t.Name, len(ix.Columns), len(ix.Orders)))
+		}
+		for _, o := range ix.Orders {
+			switch o.Direction {
+			case "", Ascending, Descending:
+			default:
+				errs = append(errs, fmt.Errorf("index %q on %q has an unknown direction %q", ix.Name, t.Name, o.Direction))
+			}
+			switch o.Nulls {
+			case "", NullsFirst, NullsLast:
+			default:
+				errs = append(errs, fmt.Errorf("index %q on %q has an unknown nulls order %q", ix.Name, t.Name, o.Nulls))
 			}
 		}
 	}

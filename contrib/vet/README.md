@@ -85,17 +85,31 @@ A default is compared by what it means, because no two engines print one alike: 
 
 ### Keys, indexes and foreign keys
 
-`ReadKeys(ctx, db, dialect)` reads every table's primary key, its indexes on plain columns and its foreign keys into a `KeyCatalogue`: a `TableKeys` per table keyed like a `Catalogue`, and `DefaultSchema`, the connection's default schema, which lets a reference the DDL writes unqualified match the qualified name the database reports. `CompareKeys(tables, keys)` compares them with the DDL's descriptions:
+`ReadKeys(ctx, db, dialect)` reads every table's primary key, its indexes on plain columns, with each key's order and a partial index's predicate, and its foreign keys into a `KeyCatalogue`: a `TableKeys` per table keyed like a `Catalogue`, and `DefaultSchema`, the connection's default schema, which lets a reference the DDL writes unqualified match the qualified name the database reports. `CompareKeys(tables, keys)` compares them with the DDL's descriptions:
 
 | Finding | Kind |
 |---|---|
 | the primary key is other columns, or the same columns in another order | error |
 | an index the DDL declares is not over the same columns | error |
 | a unique index the DDL declares is not unique in the database | error |
+| an index whose description states `Orders` sorts a key in another direction, or puts NULLs elsewhere, in the database (`Kind` `FindingIndexOrder`) | error |
+| an index is partial on one side only, or its two predicates are different (`Kind` `FindingIndexPredicate`) | error |
+| an index is partial on both sides and the predicates could not be compared (`Kind` `FindingIndexPredicateNotCompared`) | warning |
 | a foreign key the DDL declares is not in the database, references another table or columns, or has another ON DELETE or ON UPDATE | error |
 | the database has a unique index or a foreign key the DDL does not create | warning |
 
-Keys are matched by their columns, never by name, because SQLite reports no foreign-key names and an unnamed key's name is the engine's; an unstated action is `NO ACTION`, which every engine reports for it. An extra plain index is not reported, since MySQL makes one for every foreign key and `CREATE INDEX` is not part of a `CREATE TABLE`'s description, and an expression or partial index is skipped because `schema.Index` has no place for one. A catalogue action this reader has no name for is `ErrUnknownAction` rather than a guess. `CheckTables(ctx, db, dialect, tables)` is the boot check in one call: both catalogues read, both comparisons made.
+Keys are matched by their columns, never by name, because SQLite reports no foreign-key names and an unnamed key's name is the engine's; when several database indexes share the columns, a partial one beside a full one, an index no earlier declaration took is preferred, then one with the same uniqueness, then the same name, then the same partial-ness. An unstated action is `NO ACTION`, which every engine reports for it. An extra plain index is not reported, since MySQL makes one for every foreign key and `CREATE INDEX` is not part of a `CREATE TABLE`'s description, and an expression index is skipped because `schema.Index` has no place for one.
+
+Each `Finding` carries a `Kind`, a `FindingKind`, for the findings a program may want to act on by type rather than by message; it is set on the three index findings above and empty on every other.
+
+**Key order.** The readers report every index key's direction: Postgres from `pg_index.indoption`, with its NULLS placement; SQLite from `pragma_index_xinfo`; MySQL from `information_schema.statistics.collation`. An index whose description has `Orders` nil, every description written before the field existed, is not judged on order, exactly as before. With `Orders` stated, an empty direction is ascending, and NULLS placement is compared only where the catalogue reports one (Postgres), an empty one being Postgres's default for the direction. `Describe` on `pg.CreateIndex` and `sqlite.CreateIndex` states the order of every key.
+
+**Partial indexes and their predicates.** Postgres and SQLite partial indexes are read with their predicate (`pg_get_expr(indpred, indrelid)`, and on SQLite the text after `WHERE` in the stored `CREATE INDEX`). MySQL has no partial indexes. A predicate on one side only is a difference. Two predicates are compared in two steps:
+
+1. Both are put in a normal form that removes only spelling the engines ignore: runs of white space become one space, everything outside quotes is lower-cased, a quoted identifier that reads the same unquoted loses its quotes, no space is kept inside a parenthesis, and parentheses wrapping the whole predicate are dropped. Equal normal forms are the same predicate. So `"record_path" IS NULL` as the builder writes it and `(record_path IS NULL)` as Postgres prints it match without asking anything.
+2. When the normal forms differ, `CheckTables` asks the engine. On Postgres it creates a temporary view `SELECT 1 FROM table WHERE (predicate)` for each side inside a transaction it always rolls back, and compares the two `pg_get_viewdef` texts, Postgres's own canonical form for both: equal is the same predicate (`"status" = 'open'` against `(status = 'open'::text)`), different is a `FindingIndexPredicate`. SQLite keeps the `CREATE INDEX` text as written and has no canonical form, so there differing normal forms are a difference.
+
+The limits, stated plainly. Two spellings of one condition that neither step joins, `a = 1` against `1 = a`, or `a IN (1, 2)` against `a = 1 OR a = 2`, are reported as different: they are different definitions, even if equivalent. When the engine cannot be asked, because the role lacks the `TEMP` privilege, the transaction is read-only, or a predicate does not parse against the table, the pair is reported as `FindingIndexPredicateNotCompared`, a warning naming both texts and the reason, never as equal. `CompareKeys` on its own has no database, so it applies only step 1 and reports any remaining difference as not compared; use `CheckTables` for the engine's verdict. The predicate texts are put into the view's SQL as they are, so they carry the same trust as the DDL that created the index. A catalogue action this reader has no name for is `ErrUnknownAction` rather than a guess. `CheckTables(ctx, db, dialect, tables)` is the boot check in one call: both catalogues read, both comparisons made, and predicates judged by the engine as described above.
 
 ```go
 findings, err := vet.CheckTables(ctx, db, "postgres", []schema.Table{desc})
@@ -147,7 +161,7 @@ go vet -vettool=./sqlbvet ./...
 
 The install script above puts a prebuilt `sqlbvet` beside `sqlb`, so it can be used without building it first; it is also published on its own as `sqlbvet_<version>_<os>_<arch>` archives on the [`sqlbvet` releases](https://github.com/ubgo/sqlb/releases?q=sqlbvet%2F&expanded=true).
 
-Programmatically, `Run(dir, patterns...)` returns the `Finding` values — each carrying `Pos`, `Analyzer`, `Message` and `Warning` — and `RunWith` takes the analyzer set; `Failing` says whether any finding is an error, which is what decides an exit code.
+Programmatically, `Run(dir, patterns...)` returns the `Finding` values — each carrying `Pos`, `Analyzer`, `Message`, `Warning` and, for the index findings, a `Kind` — and `RunWith` takes the analyzer set; `Failing` says whether any finding is an error, which is what decides an exit code.
 
 ## Why a contrib module
 

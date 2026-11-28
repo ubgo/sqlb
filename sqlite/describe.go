@@ -23,13 +23,28 @@ func schemaAction(r RefAction) schema.Action {
 	return ""
 }
 
-// DescribeInto sets the primary key or adds the unique index.
+// DescribeInto sets the primary key or adds the unique index, with each
+// key's direction when UniqueOn was given one. A primary key's direction is
+// not described, because schema.Table.PrimaryKey holds names only.
 func (k KeyClause) DescribeInto(t *schema.Table) {
 	if k.kw == kwPrimaryKey {
 		t.PrimaryKey = names(k.cols)
 		return
 	}
-	t.Indexes = append(t.Indexes, schema.Index{Name: k.con.Name, Columns: names(k.cols), Unique: true})
+	ix := schema.Index{Name: k.con.Name, Columns: names(k.cols), Unique: true}
+	// A key made by UniqueOn states its order only when a part was given a
+	// direction; otherwise the description stays as it always was, with the
+	// order not stated.
+	for _, p := range k.parts {
+		if p.dir != "" {
+			ix.Orders = make([]schema.KeyOrder, len(k.parts))
+			for i, q := range k.parts {
+				ix.Orders[i] = schema.KeyOrder{Direction: schema.Direction(q.dir)}
+			}
+			break
+		}
+	}
+	t.Indexes = append(t.Indexes, ix)
 }
 
 // DescribeInto adds the foreign key. SQLite's references name a table in the

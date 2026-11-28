@@ -113,7 +113,20 @@ case SQLite:
 desc, err := create.Describe()
 ```
 
-`Describe` returns the `schema.Table` the statement creates: columns, types, nullability, defaults, and the keys and foreign keys its clauses declare. An index created by a separate `CREATE INDEX` is not part of `CREATE TABLE`, so add it to the description's `Indexes`; the example's `indexed` type does that in eight lines. The declaration is never run against a database; it is what the migrations must arrive at, and the tests in step 8 prove they do.
+`Describe` returns the `schema.Table` the statement creates: columns, types, nullability, defaults, and the keys and foreign keys its clauses declare. An index created by a separate `CREATE INDEX` is not part of `CREATE TABLE`, so add it to the description's `Indexes`. Write each index once, as the builder value the migration also uses, and take its description from it: `Describe` on a `pg.CreateIndex` or `sqlite.CreateIndex` returns the `schema.Index` with its columns, every key's sort order and a partial index's predicate, so the live check verifies all three. The example's partial owner index:
+
+```go
+func (t Tables) ownerIndexStmt(e Engine) indexStmt {
+	if e == SQLite {
+		return sqlite.CreateIndex(sqlite.Index{Name: t.ownerIndex()}, t.Members).IfNotExists().
+			On(sqlite.IndexKey(t.MemberTeam)).Where(sqlb.Eq(t.MemberRole, "owner"))
+	}
+	return pg.CreateIndex(pg.Index{Name: t.ownerIndex()}, t.Members).IfNotExists().
+		On(pg.IndexKey(t.MemberTeam)).Where(sqlb.Eq(t.MemberRole, "owner"))
+}
+```
+
+Migration 0003 builds it, and the example's `indexed` type appends its `Describe()` to the members table's description; a descending key, `pg.IndexKey(t.MemberTeam).Desc()`, is described the same way. A hand-written `schema.Index` with no `Orders` and no `Where` still works and is checked as before: by columns and uniqueness, its order not judged. The declaration is never run against a database; it is what the migrations must arrive at, and the tests in step 8 prove they do.
 
 Name derived objects from the real table name, so the prefix reaches them: `t.Accounts.Name + "_email_key"`.
 
@@ -152,7 +165,7 @@ Databases already exist that the old module created with `CREATE TABLE IF NOT EX
 3. Do not try to change an existing table in 0001. `IF NOT EXISTS` checks a table's name, not its shape, so 0001 cannot fix a table the old strings made differently. The live check in step 7 is what reports a difference, and the fix is a later migration.
 4. On SQLite, the declared type is what the driver reads back by: a `time.Time` column must be declared `TIMESTAMP` or `DATE` to scan into a `time.Time`, which is what `ddl.Column` writes. A column the old strings made `TEXT` is reported by the live check as a type difference; either read it as a string with `ddl.RawType[string]("TEXT")`, or move it with a table rebuild in a later migration.
 
-`TestTask_AdoptTablesAnEarlierReleaseCreated` runs exactly this on both engines: the old strings, a row, then the ledger; 0001 and 0002 are recorded, the row is intact, and the live check passes.
+`TestTask_AdoptTablesAnEarlierReleaseCreated` runs exactly this on both engines: the old strings, a row, then the ledger; 0001, 0002 and 0003 are recorded, the row is intact, and the live check passes.
 
 ## Step 6: the queries
 
@@ -175,7 +188,7 @@ case SQLite:
 
 ## Step 7: the live-schema check
 
-`vet.CheckTables` is the check `sqlb vet` runs, as a library function. It reads the database's catalogue and compares it with the descriptions, columns by name, type, nullability and default, and keys, indexes and foreign keys by their columns:
+`vet.CheckTables` is the check `sqlb vet` runs, as a library function. It reads the database's catalogue and compares it with the descriptions, columns by name, type, nullability and default, keys, indexes and foreign keys by their columns, and an index's key order and partial predicate where its description states them:
 
 ```go
 desc, err := tables.Describe(widgets.Postgres)
@@ -191,7 +204,7 @@ if vet.Failing(findings) {
 }
 ```
 
-Each `vet.Finding` names its position as `table.column` and says what differs; a warning, a column the database has and the declaration does not, does not fail. Only the tables passed are judged, so other tables in the database, another prefix's included, are left alone. `contrib/vet` imports `golang.org/x/tools`, so a library usually runs this in its tests and documents it for the application, which can run it at start-up.
+Each `vet.Finding` names its position as `table.column` and says what differs; a warning, a column the database has and the declaration does not, does not fail. An index finding also carries a `Kind`: `vet.FindingIndexOrder` and `vet.FindingIndexPredicate` are errors. Postgres re-prints a predicate (`"role" = 'owner'` comes back as `(role = 'owner'::text)`), so `CheckTables` asks Postgres for its canonical text of both sides, in a transaction it rolls back; when it cannot ask, the pair is `vet.FindingIndexPredicateNotCompared`, a warning, never a silent pass. The rule and its limits are in the [`contrib/vet` README](../contrib/vet/README.md#keys-indexes-and-foreign-keys). Only the tables passed are judged, so other tables in the database, another prefix's included, are left alone. `contrib/vet` imports `golang.org/x/tools`, so a library usually runs this in its tests and documents it for the application, which can run it at start-up.
 
 ## Step 8: the tests
 
@@ -220,4 +233,5 @@ email := schema.MustCol[string](accounts, "email")
 | a released migration edited | `migrate.ErrChecksumMismatch` at the next deploy |
 | a NOT NULL column added to a table with rows without a default | `Build`, on SQLite; the server, on Postgres |
 | a database that drifted from the declaration, or an old table made differently | `vet.CheckTables` |
+| a partial index created without its predicate, or an index created ascending where the declaration says `DESC` | `vet.CheckTables`, with the index described by its `CREATE INDEX` |
 | a wrong Go type asked of a description | `schema.MustCol` at package load |
