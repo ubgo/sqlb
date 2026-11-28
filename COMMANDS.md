@@ -129,7 +129,7 @@ Releases are cut with [volt](https://github.com/ubgo/voltkit/tree/main/apps/volt
 
 <!-- BEGIN GENERATED TASKS -->
 
-Generated from `Taskfile.yml` by `python3 scripts/gen-commands-doc.py`; `task docs:commands` fails when it is stale. 51 tasks.
+Generated from `Taskfile.yml` by `python3 scripts/gen-commands-doc.py`; `task docs:commands` fails when it is stale. 53 tasks.
 
 `MODULES` is `. contrib/driver-sqlite contrib/driver-sqlite/enginetest contrib/driver-pgx contrib/driver-pgx/enginetest contrib/driver-mysql contrib/driver-mysql/enginetest contrib/vet contrib/vet/enginetest contrib/vet/cmd/sqlb contrib/migrate contrib/migrate/enginetest contrib/debug contrib/structbind contrib/structbind/enginetest`; a task that says *for each MODULE* runs its step in each of those directories.
 
@@ -138,6 +138,7 @@ Generated from `Taskfile.yml` by `python3 scripts/gen-commands-doc.py`; `task do
 The gate - every module formatted, vetted and tested, plus the core's own gates
 
 ```sh
+task names:check
 task check:modules
 task typecheck
 task zerodep
@@ -404,6 +405,14 @@ Format every Go file
 gofmt -w .
 ```
 
+### `task hooks:install`
+
+Use the repo hooks in .githooks (private-name guard on commit and push) for this clone
+
+```sh
+git config --local core.hooksPath .githooks
+```
+
 ### `task lint`
 
 Run golangci-lint in every module
@@ -487,6 +496,14 @@ Runs in `{{.DIR}}`.
 python3 {{.ROOT_DIR}}/scripts/covmerge.py cover.out
 echo "--- {{.DIR}}"
 sh {{.ROOT_DIR}}/scripts/uncovered.sh cover.out
+```
+
+### `task names:check`
+
+Fail if a tracked file or commit message holds a private name (list read from ~/.config/names-guard/terms.txt, never stored here)
+
+```sh
+bash scripts/check-names.sh
 ```
 
 ### `task reuse:check`

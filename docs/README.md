@@ -5,6 +5,7 @@
 | Document | What it answers |
 |---|---|
 | [cross-package.md](./cross-package.md) | The problem the library exists for: four packages that do not import each other, composed into one statement, and the three ownership shapes. |
+| [declare-once.md](./declare-once.md) | Writing each table once, with a table prefix chosen at run time: the `ddl` builder, `Describe`, numbered migrations on the ledger, the live-schema check, and converting a module that has hand-written `CREATE TABLE` strings beside its typed columns. |
 | [switching-databases.md](./switching-databases.md) | Moving a library or application between Postgres, MySQL and SQLite by changing one dialect value: what engines disagree on, how each difference is handled, and how the same rows everywhere is proven. |
 | [core-builder.md](./core-builder.md) | What the core gives you: tables, typed columns, predicates, statements, and how a query carries its own scan targets. |
 | [dialects.md](./dialects.md) | How a statement renders per engine, what a dialect decides, and how a construct fails closed under the wrong one. |

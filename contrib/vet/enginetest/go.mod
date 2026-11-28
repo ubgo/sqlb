@@ -6,6 +6,7 @@ require (
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/ubgo/sqlb v0.1.0
+	github.com/ubgo/sqlb/contrib/migrate v0.1.0
 	github.com/ubgo/sqlb/contrib/vet v0.0.0-00010101000000-000000000000
 	modernc.org/sqlite v1.39.0
 )
@@ -35,3 +36,6 @@ require (
 // Test-only and never released, so the replace never reaches a consumer:
 // with GOWORK=off the tests still run against this checkout.
 replace github.com/ubgo/sqlb/contrib/vet => ../
+
+// The declare-once test applies its migrations through contrib/migrate.
+replace github.com/ubgo/sqlb/contrib/migrate => ../../migrate

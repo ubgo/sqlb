@@ -74,7 +74,7 @@ func ExampleColumnDef_DefaultExpr() {
 		ddl.Column(accCreated).DefaultExpr(expr.Literal[time.Time]("CURRENT_TIMESTAMP")),
 	).Build())
 	// Output:
-	// CREATE TABLE "account" ("created_at" TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP))
+	// CREATE TABLE "account" ("created_at" TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP))
 }
 
 // ExampleOneOf writes a CHECK constraint from a column and the values it may

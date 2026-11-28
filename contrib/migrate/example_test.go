@@ -57,7 +57,7 @@ func ExampleCreateTable_perEngine() {
 	//	"id" TEXT NOT NULL,
 	//	"email" TEXT NOT NULL,
 	//	"age" INTEGER,
-	//	"created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	//	"created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	//	PRIMARY KEY ("id")
 	// )
 }
@@ -123,6 +123,6 @@ func ExampleSQLType() {
 
 	// Output:
 	// postgres: TIMESTAMPTZ
-	// sqlite:   TEXT
+	// sqlite:   TIMESTAMP
 	// engines:  [clickhouse mysql postgres sqlite]
 }
