@@ -197,6 +197,18 @@ An index naming a column the table does not declare is caught at declaration:
 index "ghost_ix" on "membership" names column "ghost" that the table does not declare
 ```
 
+Two optional fields say what the column list cannot. `Orders` is each key's sort order, a `KeyOrder` per entry of `Columns`, with a `Direction` (`Ascending`, `Descending`, or empty for ascending) and a `NullsOrder` (`NullsFirst`, `NullsLast`, or empty for the engine's default, which on Postgres is last ascending and first descending). `Where` is a partial index's predicate, written as the engine's SQL with bare columns:
+
+```go
+Indexes: []schema.Index{
+	{Name: "runs_recent", Columns: []string{"account_id", "started_at"},
+		Orders: []schema.KeyOrder{{}, {Direction: schema.Descending}}},
+	{Name: "runs_open", Columns: []string{"account_id"}, Where: `"record_path" IS NULL`},
+}
+```
+
+An index that sets neither means what it always meant. A nil `Orders` is "not stated": `contrib/vet` does not judge that index's order, so a description written before the field existed is compared exactly as before. An empty `Where` is "not partial". Nobody needs to write either by hand: `Describe` on an engine's `CREATE INDEX` (`pg.CreateIndex`, `sqlite.CreateIndex`) returns the `schema.Index` with every key's order and the predicate exactly as `Build` writes it. `Validate` reports an `Orders` whose length differs from `Columns` and a direction or nulls value the package does not define.
+
 ## Foreign keys
 
 `Action` is what a foreign key does when the referenced row goes away, and the five constants each mean the same thing on every engine here:

@@ -104,7 +104,8 @@ func TestCompareKeys_ReportsEachDifference(t *testing.T) {
 // TestReadKeys_SQLiteShapes reads the key shapes SQLite reports unusually,
 // from a real database: REFERENCES with no column list, whose referenced
 // column SQLite reports as NULL and which names the parent's primary key; an
-// expression index and a partial index, which are skipped; and a composite
+// expression index, which is skipped; a partial index, read with its
+// predicate as written; and a composite
 // key whose order is the key's, not the table's.
 func TestReadKeys_SQLiteShapes(t *testing.T) {
 	db := memorySQLite(t)
@@ -130,8 +131,18 @@ func TestReadKeys_SQLiteShapes(t *testing.T) {
 	if len(c.ForeignKeys) != 1 || strings.Join(c.ForeignKeys[0].RefColumns, ",") != "a,b" || c.ForeignKeys[0].OnDelete != schema.Cascade {
 		t.Errorf("REFERENCES p with no columns: %+v", c.ForeignKeys)
 	}
-	if len(c.Indexes) != 1 || c.Indexes[0].Name != "c_n" {
-		t.Errorf("expression and partial indexes must be skipped: %+v", c.Indexes)
+	byName := map[string]schema.Index{}
+	for _, ix := range c.Indexes {
+		byName[ix.Name] = ix
+	}
+	if _, ok := byName["c_expr"]; ok || len(c.Indexes) != 2 {
+		t.Errorf("the expression index must be skipped and the other two read: %+v", c.Indexes)
+	}
+	if p := byName["c_partial"]; p.Where != "n IS NOT NULL" || !p.Unique {
+		t.Errorf("the partial index and its predicate as written: %+v", p)
+	}
+	if n := byName["c_n"]; n.Where != "" || len(n.Orders) != 1 || n.Orders[0].Direction != schema.Ascending {
+		t.Errorf("a plain index: %+v", n)
 	}
 	if keys.Tables["main.c"].Indexes == nil {
 		t.Error("c is not under main.c")

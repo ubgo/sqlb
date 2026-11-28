@@ -1,9 +1,16 @@
 package ddl
 
 import (
+	"errors"
+
 	"github.com/ubgo/sqlb/render"
 	"github.com/ubgo/sqlb/schema"
 )
+
+// ErrNotDescribable is returned by an engine's CREATE INDEX Describe when the
+// index has a part schema.Index has no place for, an expression key, rather
+// than a description that calls it something it is not.
+var ErrNotDescribable = errors.New("sqlb/ddl: the index has a part schema.Index cannot describe")
 
 // Describer is implemented by an engine clause that adds to a table's
 // description: a primary key sets schema.Table.PrimaryKey, a unique key adds a

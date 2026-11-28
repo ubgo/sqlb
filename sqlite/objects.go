@@ -8,6 +8,7 @@ import (
 
 	"github.com/ubgo/sqlb"
 	"github.com/ubgo/sqlb/ddl"
+	"github.com/ubgo/sqlb/schema"
 )
 
 // The SQLite statements around a table: indexes, views and triggers. Each has
@@ -282,6 +283,57 @@ func (x *CreateIndexReady) Build() (ddl.Script, error) {
 		}
 		return b.String()
 	})
+}
+
+// keyDescriber is an index key that can say which column it is and how it is
+// sorted; an expression key reports ok false.
+type keyDescriber interface {
+	describeKey() (column string, order schema.KeyOrder, ok bool)
+}
+
+func (k IndexKeyElem[T]) describeKey() (string, schema.KeyOrder, bool) {
+	if k.isExpr {
+		return "", schema.KeyOrder{}, false
+	}
+	return k.e.Name(), schema.KeyOrder{Direction: schema.Direction(k.dir)}, true
+}
+
+// Describe is the schema.Index this statement creates: its name, key columns,
+// uniqueness, each key's direction, and the predicate of a partial index as
+// Build writes it. It is what a library lists in its table's description, so
+// the description and the CREATE INDEX cannot disagree and vet.CheckTables
+// verifies the index, its order and its predicate.
+//
+// Orders is set for every key, a key given no direction stating none. A key's
+// collation is not described, because schema.Index has no place for it. An
+// expression key is ddl.ErrNotDescribable. A statement Build refuses is not
+// described: the error is Build's.
+func (x *CreateIndexReady) Describe() (schema.Index, error) {
+	if _, err := x.Build(); err != nil {
+		return schema.Index{}, err
+	}
+	c := x.core
+	ix := schema.Index{Name: c.ix.Name, Unique: c.unique}
+	for _, k := range c.keys {
+		d, ok := k.(keyDescriber)
+		if !ok {
+			return schema.Index{}, ddl.ErrNotDescribable
+		}
+		col, order, ok := d.describeKey()
+		if !ok {
+			return schema.Index{}, ddl.ErrNotDescribable
+		}
+		ix.Columns = append(ix.Columns, col)
+		ix.Orders = append(ix.Orders, order)
+	}
+	if c.where != nil {
+		a := sqlb.NewInlineArgs(Dialect{})
+		ix.Where = writePred(a, c.where)
+		if err := a.Err(); err != nil {
+			return schema.Index{}, err
+		}
+	}
+	return ix, nil
 }
 
 // writePred renders a predicate with columns bare.

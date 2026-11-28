@@ -25,7 +25,29 @@ type Finding struct {
 	Analyzer string
 	Message  string
 	Warning  bool
+	// Kind classifies a finding a program may want to act on by type rather
+	// than by its message. It is empty for every finding this version does
+	// not classify.
+	Kind FindingKind
 }
+
+// FindingKind is the type of a Finding, for the findings that have one.
+type FindingKind string
+
+// The classified findings, all from comparing an index's description with
+// the database (CompareKeys and CheckTables).
+const (
+	// FindingIndexOrder: a key of the index sorts in another direction, or
+	// puts NULLs elsewhere, than the description states. An error.
+	FindingIndexOrder FindingKind = "index-order"
+	// FindingIndexPredicate: one side is partial and the other is not, or
+	// the two predicates are different. An error.
+	FindingIndexPredicate FindingKind = "index-predicate"
+	// FindingIndexPredicateNotCompared: both sides are partial and the
+	// predicates could not be compared, so nothing is claimed about them. A
+	// warning, never a silent pass.
+	FindingIndexPredicateNotCompared FindingKind = "index-predicate-not-compared"
+)
 
 // Failing reports whether any finding is an error rather than a warning,
 // which is what decides a process exit code and a test's outcome.

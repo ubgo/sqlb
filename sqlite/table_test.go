@@ -283,6 +283,46 @@ func TestDescribe_SQLiteKeysAndReferences(t *testing.T) {
 	}
 }
 
+// TestDescribe_SQLiteIndexOrderAndPredicate pins what a CREATE INDEX
+// describes, every key's direction and a partial index's predicate as Build
+// writes it, and that a UNIQUE key states its order only when UniqueOn was
+// given a direction, so a key declared before stays described as it was.
+func TestDescribe_SQLiteIndexOrderAndPredicate(t *testing.T) {
+	stmt := sqlite.CreateIndex(sqlite.Index{Name: "users_open"}, tUsers).On(sqlite.IndexKey(tEmail), sqlite.IndexKey(tID).Desc()).Where(sqlb.IsNull(tNick))
+	ix, err := stmt.Describe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(ix.Columns, ",") != "email,id" || ix.Unique || len(ix.Orders) != 2 ||
+		ix.Orders[0] != (schema.KeyOrder{}) || ix.Orders[1] != (schema.KeyOrder{Direction: schema.Descending}) || ix.Where != `"nick" IS NULL` {
+		t.Fatalf("index: %+v", ix)
+	}
+	s, err := stmt.Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(s[0].SQL, " WHERE "+ix.Where) {
+		t.Fatalf("the description's predicate is not the one Build writes: %s", s[0].SQL)
+	}
+	if _, err := sqlite.CreateIndex(sqlite.Index{Name: "users_lower"}, tUsers).On(sqlite.IndexExpr(sqlb.Lower(tEmail))).Describe(); !errors.Is(err, ddl.ErrNotDescribable) {
+		t.Fatalf("an expression key: %v", err)
+	}
+	if _, err := sqlite.CreateIndex(sqlite.Index{Name: "x"}, tUsers).On(sqlite.IndexKey(tSessID)).Describe(); !errors.Is(err, ddl.ErrForeignColumn) {
+		t.Fatalf("a statement Build refuses: %v", err)
+	}
+	keyed, err := sqlite.CreateTable(tUsers).Column(ddl.Column(tID), ddl.Column(tEmail)).
+		Clause(sqlite.PrimaryKey(tID), sqlite.UniqueOn(sqlite.Key(tEmail).Desc()), sqlite.Unique(tID, tEmail)).Describe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if o := keyed.Indexes[0].Orders; len(o) != 1 || o[0].Direction != schema.Descending {
+		t.Fatalf("UniqueOn with a direction: %+v", keyed.Indexes[0])
+	}
+	if keyed.Indexes[1].Orders != nil {
+		t.Fatalf("a key with no direction must state no order: %+v", keyed.Indexes[1])
+	}
+}
+
 // TestTableConstraint_SQLiteRefusesAnotherTable pins the declared-constraint
 // check on SQLite's two named clauses, and that an unnamed key stays legal.
 func TestTableConstraint_SQLiteRefusesAnotherTable(t *testing.T) {

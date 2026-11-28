@@ -34,6 +34,8 @@ func Example_migrations() {
 	// -- 0002
 	// ALTER TABLE "acme_accounts" ADD COLUMN "birthday" DATE, ADD COLUMN "profile" JSONB NOT NULL DEFAULT ('{}'), ADD COLUMN "avatar" BYTEA
 	// CREATE INDEX IF NOT EXISTS "acme_members_team_idx" ON "acme_members" ("team")
+	// -- 0003
+	// CREATE INDEX IF NOT EXISTS "acme_members_owner_idx" ON "acme_members" ("team") WHERE "role" = 'owner'
 	// -- 0001
 	// CREATE TABLE IF NOT EXISTS "acme_accounts" ("id" INTEGER NOT NULL, "email" TEXT NOT NULL, "active" INTEGER NOT NULL DEFAULT 1, "created_at" TIMESTAMP NOT NULL, PRIMARY KEY ("id"))
 	// CREATE UNIQUE INDEX IF NOT EXISTS "acme_accounts_email_key" ON "acme_accounts" ("email")
@@ -43,6 +45,8 @@ func Example_migrations() {
 	// ALTER TABLE "acme_accounts" ADD COLUMN "profile" TEXT NOT NULL DEFAULT ('{}')
 	// ALTER TABLE "acme_accounts" ADD COLUMN "avatar" BLOB
 	// CREATE INDEX IF NOT EXISTS "acme_members_team_idx" ON "acme_members" ("team")
+	// -- 0003
+	// CREATE INDEX IF NOT EXISTS "acme_members_owner_idx" ON "acme_members" ("team") WHERE "role" = 'owner'
 }
 
 // Example_describe prints what the declaration describes, the input to the
@@ -62,7 +66,11 @@ func Example_describe() {
 			fmt.Printf("  %s %s nullable=%t default=%q\n", c.Name, c.Type, c.Nullable, c.Default)
 		}
 		for _, ix := range tb.Indexes {
-			fmt.Printf("  index %s %v unique=%t\n", ix.Name, ix.Columns, ix.Unique)
+			fmt.Printf("  index %s %v unique=%t", ix.Name, ix.Columns, ix.Unique)
+			if ix.Where != "" {
+				fmt.Printf(" where %s", ix.Where)
+			}
+			fmt.Println()
 		}
 		for _, fk := range tb.ForeignKeys {
 			fmt.Printf("  references %s%v on delete %s\n", fk.RefTable, fk.RefColumns, fk.OnDelete)
@@ -83,5 +91,6 @@ func Example_describe() {
 	//   team text nullable=false default=""
 	//   role text nullable=false default="'member'"
 	//   index acme_members_team_idx [team] unique=false
+	//   index acme_members_owner_idx [team] unique=false where "role" = 'owner'
 	//   references acme_accounts[id] on delete CASCADE
 }

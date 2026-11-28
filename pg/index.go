@@ -7,6 +7,7 @@ import (
 
 	"github.com/ubgo/sqlb"
 	"github.com/ubgo/sqlb/ddl"
+	"github.com/ubgo/sqlb/schema"
 )
 
 const (
@@ -359,15 +360,73 @@ func (x *CreateIndexReady) Build() (ddl.Script, error) {
 			b.WriteString(" " + kwWith + " (" + strings.Join(ps, ", ") + ")")
 		}
 		if c.hasWhere {
-			b.WriteString(" " + kwWhere + " " + a.Bare(func() string {
-				var w strings.Builder
-				c.where.WriteSQL(&w, a)
-				return w.String()
-			}))
+			b.WriteString(" " + kwWhere + " " + predicateSQL(a, c.where))
 		}
 		return b.String()
 	})
 	return s, err
+}
+
+// predicateSQL renders a partial index's predicate with its columns bare, as
+// CREATE INDEX writes it and as Describe reports it.
+func predicateSQL(a *sqlb.Args, p sqlb.Predicate) string {
+	return a.Bare(func() string {
+		var w strings.Builder
+		p.WriteSQL(&w, a)
+		return w.String()
+	})
+}
+
+// keyDescriber is an index key that can say which column it is and how it is
+// sorted; an expression key reports ok false.
+type keyDescriber interface {
+	describeKey() (column string, order schema.KeyOrder, ok bool)
+}
+
+func (k IndexKeyElem[T]) describeKey() (string, schema.KeyOrder, bool) {
+	if k.isExpr {
+		return "", schema.KeyOrder{}, false
+	}
+	return k.e.Name(), schema.KeyOrder{Direction: schema.Direction(k.dir), Nulls: schema.NullsOrder(k.nulls)}, true
+}
+
+// Describe is the schema.Index this statement creates: its name, key columns,
+// uniqueness, each key's direction and NULLS placement, and the predicate of a
+// partial index as Build writes it. It is what a library lists in its table's
+// description, so the description and the CREATE INDEX cannot disagree and
+// vet.CheckTables verifies the index, its order and its predicate.
+//
+// Orders is set for every key, a key given no direction stating none. The
+// access method, INCLUDE columns, operator classes, storage parameters and
+// NULLS NOT DISTINCT are not described, because schema.Index has no place for
+// them. An expression key is ddl.ErrNotDescribable. A statement Build refuses
+// is not described: the error is Build's.
+func (x *CreateIndexReady) Describe() (schema.Index, error) {
+	if _, err := x.Build(); err != nil {
+		return schema.Index{}, err
+	}
+	c := x.core
+	ix := schema.Index{Name: c.ix.Name, Unique: c.unique}
+	for _, k := range c.keys {
+		d, ok := k.(keyDescriber)
+		if !ok {
+			return schema.Index{}, ddl.ErrNotDescribable
+		}
+		col, order, ok := d.describeKey()
+		if !ok {
+			return schema.Index{}, ddl.ErrNotDescribable
+		}
+		ix.Columns = append(ix.Columns, col)
+		ix.Orders = append(ix.Orders, order)
+	}
+	if c.hasWhere {
+		a := sqlb.NewInlineArgs(Dialect{})
+		ix.Where = predicateSQL(a, c.where)
+		if err := a.Err(); err != nil {
+			return schema.Index{}, err
+		}
+	}
+	return ix, nil
 }
 
 // onTable reports whether a column belongs to t, by schema and name.
