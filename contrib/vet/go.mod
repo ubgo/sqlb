@@ -3,7 +3,7 @@ module github.com/ubgo/sqlb/contrib/vet
 go 1.24.0
 
 require (
-	github.com/ubgo/sqlb v0.1.0
+	github.com/ubgo/sqlb v0.1.3
 	golang.org/x/tools v0.37.0
 )
 
