@@ -14,10 +14,16 @@ var engineTypes = map[string]map[Type]string{
 		TypeTimestamp: "TIMESTAMPTZ", TypeDate: "DATE", TypeUUID: "UUID",
 		TypeJSON: "JSONB", TypeDecimal: "NUMERIC",
 	},
+	// SQLite's timestamp and date are TIMESTAMP and DATE rather than TEXT:
+	// the type has TEXT's storage either way, but the modernc driver decodes
+	// a column declared TIMESTAMP or DATE into a time.Time and returns a TEXT
+	// one as a string, so with TEXT a Col[time.Time] could be written and
+	// never scanned back. A STRICT table accepts neither spelling; give such a
+	// column RawType("TEXT") and read it as a string.
 	"sqlite": {
 		TypeText: "TEXT", TypeInt: "INTEGER", TypeBigInt: "INTEGER",
 		TypeBool: "INTEGER", TypeFloat: "REAL", TypeBytes: "BLOB",
-		TypeTimestamp: "TEXT", TypeDate: "TEXT", TypeUUID: "TEXT",
+		TypeTimestamp: "TIMESTAMP", TypeDate: "DATE", TypeUUID: "TEXT",
 		TypeJSON: "TEXT", TypeDecimal: "NUMERIC",
 	},
 	// MySQL's text is VARCHAR(255) rather than TEXT because a TEXT column cannot

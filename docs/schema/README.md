@@ -345,10 +345,12 @@ CREATE TABLE "app_user" (
 	"id" TEXT NOT NULL,
 	"email" TEXT NOT NULL,
 	"age" INTEGER,
-	"created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	"created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY ("id")
 )
 ```
+
+SQLite has no time type, so `TIMESTAMP` and `DATE` store text exactly as `TEXT` does. They are spelled that way because the SQLite driver decodes a column declared `TIMESTAMP` or `DATE` into a `time.Time` and returns a `TEXT` one as a string, so a `time.Time` column declared `TEXT` could be written and never read back. A `STRICT` table accepts neither spelling: give such a column `ddl.RawType[string]("TEXT")` and read it as a string.
 
 ```go
 migrate.SQLType(postgres.Dialect{}, schema.Column{Name: "at", Type: schema.TypeTimestamp})
@@ -356,7 +358,7 @@ migrate.SQLType(postgres.Dialect{}, schema.Column{Name: "at", Type: schema.TypeT
 
 ```
 postgres: TIMESTAMPTZ
-sqlite:   TEXT
+sqlite:   TIMESTAMP
 engines:  [clickhouse mysql postgres sqlite]
 ```
 

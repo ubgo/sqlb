@@ -41,7 +41,7 @@ script, err := migrate.Install(
 
 A `migrate.Table` is anything with `Build` and `Describe`, which `pg.CreateTable(...)`, `sqlite.CreateTable(...)` and `mysql.CreateTable(...)` all are once they have a column. Each `Contribution` names its owner. The order is `schema.Set.Sorted` over the descriptions, so it is deterministic and cycle-checked. A table two contributors both create is refused with `schema.ErrDuplicateTable`, naming both owners. A foreign key to a table no contribution creates is refused with `schema.ErrMissingTable`, because `Install` is for a whole database installed together. A nil entry in `Tables` is `migrate.ErrNilTable` naming its owner, not a panic, and a statement whose `Build` fails cannot be described, so it fails `Install` with `Build`'s error. A foreign key to a table in a schema, `auth.users`, resolves to exactly that table. The same contributions in any order give the same script.
 
-This is the converged form: the table is declared once, as DDL, and the description that orders it is derived from that DDL rather than written beside it. `Plan`, below, is the older form that starts from a hand-written `schema.Set`.
+This is the converged form: the table is declared once, as DDL, and the description that orders it is derived from that DDL rather than written beside it. `Plan`, below, is the older form that starts from a hand-written `schema.Set`. [Declare a table once](../../docs/declare-once.md) walks a whole library through it, with a run-time table prefix, numbered migrations on the ledger and adopting databases that hand-written `CREATE TABLE IF NOT EXISTS` strings created.
 
 ## Running a script
 

@@ -11,6 +11,7 @@ import (
 	"github.com/ubgo/sqlb"
 	driversqlite "github.com/ubgo/sqlb/contrib/driver-sqlite"
 	"github.com/ubgo/sqlb/ddl"
+	"github.com/ubgo/sqlb/schema"
 	"github.com/ubgo/sqlb/sqlite"
 )
 
@@ -616,5 +617,63 @@ func TestDDL_SQLiteFTS5ExternalContent(t *testing.T) {
 	var n int
 	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM f_docs_fts WHERE f_docs_fts MATCH 'cafe'`).Scan(&n); err != nil || n != 1 {
 		t.Errorf("remove_diacritics search found %d, %v", n, err)
+	}
+}
+
+// TestDDL_SQLiteTimeColumnsScanBackIntoTime pins the SQLite spellings of the
+// portable timestamp and date types. They were TEXT until 2026-11-28, and the
+// modernc driver returns a TEXT column as a string, so a Col[time.Time]
+// created by ddl.Column could be written and never read back: the scan failed
+// with "storing driver.Value type string into type *time.Time". The driver
+// decodes a column declared TIMESTAMP or DATE into a time.Time, so those are
+// the spellings, and this writes and reads both, a NULL date included.
+func TestDDL_SQLiteTimeColumnsScanBackIntoTime(t *testing.T) {
+	db, err := driversqlite.Memory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	events := sqlb.Table{Name: "events", Alias: "e"}
+	id := sqlb.Col[int64](events, "id")
+	at := sqlb.Col[time.Time](events, "at")
+	day := sqlb.Col[*time.Time](events, "day")
+	s, err := sqlite.CreateTable(events).
+		Column(ddl.Column(id), ddl.Column(at), ddl.Column(day).As(ddl.Portable[*time.Time](schema.TypeDate))).
+		Clause(sqlite.PrimaryKey(id)).Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `CREATE TABLE "events" ("id" INTEGER NOT NULL, "at" TIMESTAMP NOT NULL, "day" DATE, PRIMARY KEY ("id"))`; s[0].SQL != want {
+		t.Fatalf("got  %s\nwant %s", s[0].SQL, want)
+	}
+	ctx := context.Background()
+	if _, err := db.ExecContext(ctx, s[0].SQL); err != nil {
+		t.Fatal(err)
+	}
+	when := time.Date(2026, 3, 4, 5, 6, 7, 8000, time.UTC)
+	date := time.Date(2026, 3, 4, 0, 0, 0, 0, time.UTC)
+	for _, row := range []struct {
+		id  int64
+		day *time.Time
+	}{{1, &date}, {2, nil}} {
+		q, err := sqlite.Insert(events).Row(sqlb.Set(id, row.id), sqlb.Set(at, when), sqlb.Set(day, row.day)).Build()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := db.ExecContext(ctx, q.SQL, q.Args...); err != nil {
+			t.Fatal(err)
+		}
+		var gotAt time.Time
+		var gotDay *time.Time
+		sel, err := sqlite.Select().Columns(sqlb.Bind(at, &gotAt), sqlb.Bind(day, &gotDay)).From(events).Where(sqlb.Eq(id, row.id)).Build()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := sqlb.One(ctx, db, sel); err != nil {
+			t.Fatal(err)
+		}
+		if !gotAt.Equal(when) || (row.day == nil) != (gotDay == nil) || (gotDay != nil && !gotDay.Equal(date)) {
+			t.Fatalf("row %d: read back %v and %v", row.id, gotAt, gotDay)
+		}
 	}
 }

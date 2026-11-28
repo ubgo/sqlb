@@ -2,6 +2,16 @@
 
 All notable changes to `github.com/ubgo/sqlb` are documented here. The format follows Keep a Changelog, and versioning is SemVer with the pre-GA convention that `v0.x` may break.
 
+## [Unreleased]
+
+### Changed
+
+- **SQLite spells the portable timestamp and date types `TIMESTAMP` and `DATE`, not `TEXT`.** The storage is text either way, but the modernc SQLite driver decodes a column declared `TIMESTAMP` or `DATE` into a `time.Time` and returns a `TEXT` one as a string, so a `Col[time.Time]` created by `ddl.Column` (or by `contrib/migrate`'s `CreateTable` from a `schema.TypeTimestamp` column) could be written and never scanned back. `schema.EngineType("sqlite", …)`, the `ddl` builders and `contrib/migrate` all read the one table. Upgrading: a SQLite database created by an earlier release's DDL still has `TEXT` columns, and `sqlb vet`'s `CompareTables`/`CheckTables` now report each as a type difference; declare such a column with `ddl.RawType[string]("TEXT")` and read it as a string, or move it with a table rebuild. A `STRICT` table accepts neither new spelling and needs `RawType("TEXT")` too.
+
+### Added
+
+- `examples/prefixed/widgets` and [`docs/declare-once.md`](docs/declare-once.md): a library whose tables are written once under a run-time prefix, with its declaration, hand-written numbered migrations on the `contrib/migrate` ledger, `vet.CheckTables` against the declaration, and `ON CONFLICT`, `RETURNING` and `FOR UPDATE` queries, executed on SQLite and Postgres 17 in `contrib/vet/enginetest`, including adopting a database an earlier release created with `CREATE TABLE IF NOT EXISTS` strings. The page ends with the recipe for converting such a module.
+
 ## [contrib modules, 2026-11-10]
 
 `contrib/migrate/v0.1.1`, `contrib/structbind/v0.1.1`, `contrib/driver-sqlite/v0.1.1`, `contrib/driver-pgx/v0.1.1`, `contrib/driver-mysql/v0.1.1`, `contrib/vet/v0.1.2` and the new `contrib/vet/cmd/sqlb` module. No change to any library's Go code ([#4](https://github.com/ubgo/sqlb/issues/4)).

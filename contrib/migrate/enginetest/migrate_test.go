@@ -89,7 +89,7 @@ func TestSQLType_IsPerEngine(t *testing.T) {
 		want string
 	}{
 		{postgres.Dialect{}, "TIMESTAMPTZ"},
-		{sqlite.Dialect{}, "TEXT"},
+		{sqlite.Dialect{}, "TIMESTAMP"},
 		{clickhouse.Dialect{}, "DateTime64(3)"},
 	} {
 		got, err := migrate.SQLType(c.d, col)

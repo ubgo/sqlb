@@ -10,6 +10,7 @@ Nothing here is a toy. Every statement in this tree is built by a test whose exp
 |---|---|---:|
 | [`cookbook/`](./cookbook) | Twelve recipes, and the four packages that tell the cross-package story the library exists for | 12 examples |
 | [`packages/`](./packages) | One file per layer — `render`, `expr`, `stmt`, `exec`, results, `schema` — the source of the per-package documentation snippets | 43 examples |
+| [`prefixed/widgets/`](./prefixed/widgets) | A library that owns two tables under a run-time prefix: columns written once, the declaration, hand-written numbered migrations and its queries, executed on SQLite and Postgres by `contrib/vet/enginetest`; the walkthrough is [`docs/declare-once.md`](../docs/declare-once.md) | 2 examples |
 | [`typecheck/`](./typecheck) | The one file in the repository that must **not** compile | 8 statements |
 | [`pgsurface/`](./pgsurface) | The Postgres surface, area by area | 89 examples |
 | [`pgsurface/advancedsql/`](./pgsurface/advancedsql) | An external catalogue of advanced PostgreSQL queries, translated section by section | 53 examples |
