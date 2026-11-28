@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/jackc/pgx/v5 v5.7.5
-	github.com/ubgo/sqlb v0.1.0
+	github.com/ubgo/sqlb v0.1.3
 	github.com/ubgo/sqlb/contrib/migrate v0.1.0
 	modernc.org/sqlite v1.39.0
 )
