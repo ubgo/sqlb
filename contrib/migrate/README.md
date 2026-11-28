@@ -24,7 +24,7 @@ It exists as much to prove that `schema` carries its weight as to be used. A sch
 
 It orders the statements to create a database that does not yet exist, and it runs a script correctly, and it stops there.
 
-It does **not diff against a live database**; `contrib/vet`'s `CompareTables` does that, and reports rather than repairs. Its **ledger is opt-in and records, nothing more**: `Ledger.Apply` runs the migrations it is handed, once each, under a lock, `Ledger.Adopt` records ones that already ran without running them, `Ledger.Script` writes what `Apply` would run as statements, and `Ledger.Applied` reads back what it recorded. Which migrations exist, what they are called, what order they come in and when a deploy runs them stay the application's decision, per ADR-0003: there is no migration directory, no file loader, no command line and no down migration.
+It does **not diff against a live database**; `contrib/vet`'s `CompareTables` does that, and reports rather than repairs. Its **ledger is opt-in and records, nothing more**: `Ledger.Apply` runs the migrations it is handed, once each, under a lock, `Ledger.Adopt` records ones that already ran without running them (`Ledger.AdoptPrepared` when deciding which ran means reading the database), `Ledger.Script` writes what `Apply` would run as statements, and `Ledger.Applied` reads back what it recorded. Which migrations exist, what they are called, what order they come in and when a deploy runs them stay the application's decision, per ADR-0003: there is no migration directory, no file loader, no command line and no down migration.
 
 So this is not a migration tool in the golang-migrate or Atlas sense, and it does not want to become one.
 
@@ -114,6 +114,28 @@ applied, err := l.ApplyDB(ctx, db, all...)      // runs only what is new
 - **Refuses what `Apply` refuses, before writing anything:** a bad migration is `ErrBadMigration`; a migration already recorded with another checksum is `ErrChecksumMismatch`, whether `ran` selects it or not; from a `RefuseUnknown` ledger, a recorded migration under a given owner that the list lacks is `ErrUnknownMigration`. A migration already recorded with the same checksum is left alone, so adopting twice records nothing the second time.
 - **One transaction, under the ledger's lock:** the rows are plain `INSERT`s, so they commit together or not at all on every engine, MySQL included. `Adopt` takes the same lock as `Apply`, so two processes adopting at once, or one adopting while another applies, serialize, and the second records or runs only what is still missing.
 
+#### Reading the old ledger under the lock
+
+`ran` takes no connection and returns no error, so a caller that must read its old ledger table to answer it would read before `Adopt`, on a connection of its own, outside the lock. On SQLite that read is not safe at start-up: when two processes open a fresh file with `journal_mode(WAL)` in the DSN, the one converting the file to WAL makes the other's first statement fail with `database is locked`, whatever the busy timeout says. The ledger waits that out for the connection it pins; a read on any other connection gets no such wait (measured: 44 of 200 rounds with two processes failed). `AdoptPrepared` and `AdoptPreparedDB` take a `migrate.PrepareRan` instead, `func(ctx, conn) (migrate.Ran, error)`, which is called once with the ledger's own connection, after the lock is taken and the ledger is read, and before any migration is judged:
+
+```go
+prepare := func(ctx context.Context, conn *sql.Conn) (migrate.Ran, error) {
+	old, err := readOldLedger(ctx, conn) // the library's own read, on conn
+	if err != nil {
+		return nil, err // nothing is recorded; the caller gets this error back, wrapped
+	}
+	return func(m migrate.Migration) (time.Time, bool) {
+		at, ok := old[m.Owner+"/"+m.Name]
+		return at, ok
+	}, nil
+}
+adopted, err := l.AdoptPreparedDB(ctx, db, prepare, all...)
+```
+
+- **Read through `conn`, not the pool.** On SQLite it is the connection whose open the ledger waited out, holding the lock row; on Postgres and MySQL the lock is a session lock on it. `prepare` runs outside any transaction and should only read.
+- **An error stops the adoption** before anything is recorded, the lock is released, and the error comes back wrapped, so `errors.Is` and `errors.As` find the caller's own error: a checksum mismatch the caller found in its old ledger, say.
+- **It runs on every call,** even when everything is already recorded, so the caller's own checks of its old ledger run on every start. A nil `prepare`, or a nil `Ran` from it, adopts every migration, as a nil `ran` does. Everything else is `Adopt`'s behaviour; `Adopt(ctx, conn, ran, ...)` is `AdoptPrepared` with a `prepare` that returns `ran`.
+
 ### An offline script
 
 Some teams apply schema changes by hand or with their own tooling. `l.Script(migrations...)` returns what `Apply` would run on a database with an empty ledger, as a `ddl.Script` and not run: `l.TableScript()`, the ledger's `CREATE TABLE IF NOT EXISTS`, then each migration's statements followed by `l.RecordStatement(m)`, the `INSERT` of its ledger row with every value a literal. They are built by the same code `Apply` uses, so after the script has run, `Apply` with the same migrations applies nothing and reports no mismatch. `TableScript` and `RecordStatement` are there for a caller that assembles its own script, a record-only script for adoption say.
@@ -136,7 +158,7 @@ for _, st := range script {
 
 On all three engines the tests apply a history, apply it again to no effect, refuse an edited migration, and hold the lock on one connection while a second deploy starts: it waits, and once released finds the migration applied by the holder and applies nothing. They also show that on SQLite a failed migration leaves no ledger row, read `Applied` back before and after with every field, and that `RefuseUnknown` refuses the one unknown row by name, ignores an owner it was not given, and leaves plain `Apply` as it was. The SQLite concurrency tests hold SQLite's write lock on one connection while `ApplyDB` starts on another handle, with and without a busy timeout and on a file whose first open must convert it to WAL, and require it to wait and then succeed; a third runs two handles on ten fresh files at once and requires every migration recorded exactly once. Before the fix each of the deterministic ones failed with `database is locked`, and the fresh-file run failed about one round in five. The lock test is deterministic because a test where two deploys race only fails when their timing lines up, and the first version of this one passed with the lock removed.
 
-The adoption suite, written for all three engines, starts from a database an earlier ledger migrated (a table and two `ADD COLUMN`s, one from a second owner), shows `Apply` alone failing, then adopts what the old ledger lists with its times, applies only the new migration, adopts twice to no effect, and refuses an edited migration and an unknown row with nothing recorded. It holds the lock on one connection while a second process adopts, and again while a second process applies, so each race is deterministic; it also runs two adopters at once on one database, and two processes on ten fresh SQLite files, and requires every row recorded exactly once. The script suite runs `Script`'s statements one `Exec` at a time, as a person would, and requires `Apply` afterwards to apply nothing and to read back the injected time.
+The adoption suite, written for all three engines, starts from a database an earlier ledger migrated (a table and two `ADD COLUMN`s, one from a second owner), shows `Apply` alone failing, then adopts what the old ledger lists with its times, applies only the new migration, adopts twice to no effect, and refuses an edited migration and an unknown row with nothing recorded. It holds the lock on one connection while a second process adopts, and again while a second process applies, so each race is deterministic; it also runs two adopters at once on one database, and two processes on ten fresh SQLite files, and requires every row recorded exactly once. The prepared-adoption suite, on all three engines, reads the old ledger through the ledger's connection, returns a caller's error and a refused read with nothing recorded and the caller's error findable with `errors.Is`, then adopts with the old times and applies only the new migration. On SQLite, two processes start together on 200 fresh files opened with `journal_mode(WAL)` in the DSN, each reading its old ledger inside `AdoptPreparedDB` and then applying, and every call must succeed; the same read on the caller's own handle before `Adopt` failed in 44 of 200 rounds. The script suite runs `Script`'s statements one `Exec` at a time, as a person would, and requires `Apply` afterwards to apply nothing and to read back the injected time.
 
 ## Use
 

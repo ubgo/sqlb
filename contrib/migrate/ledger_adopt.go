@@ -76,8 +76,64 @@ type Ran func(m Migration) (at time.Time, ok bool)
 // the first one's rows and records only what is still missing. Every row is
 // written in one transaction, on all three engines, since the rows are
 // INSERTs rather than DDL: a failure records none of them.
-func (l Ledger) Adopt(ctx context.Context, conn *sql.Conn, ran Ran, ms ...Migration) (adopted []string, err error) {
+func (l Ledger) Adopt(ctx context.Context, conn *sql.Conn, ran Ran, ms ...Migration) ([]string, error) {
+	return l.adopt(ctx, conn, func(context.Context, *sql.Conn) (Ran, error) { return ran, nil }, ms)
+}
+
+// PrepareRan builds Adopt's Ran by reading the database, on the connection
+// the ledger holds its lock on. A caller moving from a ledger of its own
+// cannot answer Ran without reading that ledger's table, and a read done
+// before Adopt, on a connection of the caller's own, runs outside the lock
+// and without the waits the ledger gives its own connection: on a fresh
+// SQLite file opened with journal_mode(WAL) in its DSN, a second process
+// converting the file to WAL refuses that read with SQLITE_BUSY whatever the
+// busy timeout says. A PrepareRan reads through conn instead, and its error
+// stops the adoption.
+type PrepareRan func(ctx context.Context, conn *sql.Conn) (Ran, error)
+
+// AdoptPrepared is Adopt for a caller that must read the database to know
+// which migrations ran: prepare is called once, on conn, after the ledger's
+// lock is taken and its rows are read and before any migration is judged,
+// and the Ran it returns answers as Adopt's ran does; a nil prepare, or a nil
+// Ran from it, adopts every migration, as a nil ran does. prepare runs on
+// every call, even one that will find everything already recorded, so it can
+// also check the old ledger it reads.
+//
+// An error from prepare ends the call before anything is recorded and is
+// returned wrapped, so errors.Is and errors.As find the caller's own error;
+// the lock is released as usual. prepare must use conn and not open another
+// connection to the same database: on SQLite that connection is the one whose
+// open the ledger waited out, and it already holds the lock row; on Postgres
+// and MySQL the lock is a session lock on conn. prepare runs outside any
+// transaction and should only read; whatever it writes is not undone when
+// the adoption fails.
+func (l Ledger) AdoptPrepared(ctx context.Context, conn *sql.Conn, prepare PrepareRan, ms ...Migration) ([]string, error) {
+	return l.adopt(ctx, conn, prepare, ms)
+}
+
+// AdoptPreparedDB pins one connection from db and runs AdoptPrepared on it,
+// waiting out a SQLite open refused for contention as ApplyDB does; prepare
+// is handed that pinned connection.
+func (l Ledger) AdoptPreparedDB(ctx context.Context, db *sql.DB, prepare PrepareRan, ms ...Migration) ([]string, error) {
+	conn, err := l.pinConn(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = conn.Close() }()
+	return l.AdoptPrepared(ctx, conn, prepare, ms...)
+}
+
+// adopt is Adopt and AdoptPrepared: Adopt's ran is a prepare that returns it.
+func (l Ledger) adopt(ctx context.Context, conn *sql.Conn, prepare PrepareRan, ms []Migration) (adopted []string, err error) {
 	err = l.locked(ctx, conn, ms, func(done map[[2]string]string, begin beginner) error {
+		var ran Ran
+		if prepare != nil {
+			r, err := prepare(ctx, conn)
+			if err != nil {
+				return fmt.Errorf("migrate: adopt: reading what ran: %w", err)
+			}
+			ran = r
+		}
 		var rows ddl.Script
 		var names []string
 		for _, m := range ms {

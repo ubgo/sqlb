@@ -454,3 +454,203 @@ func TestAdopt_ExistingHistoryThenApply(t *testing.T) {
 		t.Fatalf("apply after adopting: %v, %v", applied, err)
 	}
 }
+
+// queryer is what reading an old ledger needs: a *sql.DB before Adopt, or the
+// ledger's own *sql.Conn inside AdoptPrepared.
+type queryer interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}
+
+// readOldLedger is the PrepareRan a library writes: it reads its old ledger
+// through q, returning the database's error rather than failing the test, so
+// a refused read reaches the caller as it would in a library.
+func readOldLedger(ctx context.Context, q queryer, prefix string) (migrate.Ran, error) {
+	rows, err := q.QueryContext(ctx, "SELECT owner, name, ran_at FROM "+prefix+"_old_ledger")
+	if err != nil {
+		return nil, err
+	}
+	ran := map[[2]string]time.Time{}
+	for rows.Next() {
+		var o, n, at string
+		if err := rows.Scan(&o, &n, &at); err != nil {
+			return nil, errors.Join(err, rows.Close())
+		}
+		when, err := time.Parse(time.RFC3339Nano, at)
+		if err != nil {
+			return nil, errors.Join(err, rows.Close())
+		}
+		ran[[2]string{o, n}] = when
+	}
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+		return nil, err
+	}
+	return func(m migrate.Migration) (time.Time, bool) {
+		at, ok := ran[[2]string{m.Owner, m.Name}]
+		return at, ok
+	}, nil
+}
+
+// errOldLedgerEdited is the error a library's own check of its old ledger
+// returns, which AdoptPrepared must hand back where errors.Is finds it.
+var errOldLedgerEdited = errors.New("acme: the old ledger lists a migration whose script changed")
+
+// adoptPreparedSuite is AdoptPrepared on every engine: the old ledger is read
+// through the ledger's own connection under its lock; an error from that read
+// stops the adoption with nothing recorded and reaches the caller wrapped;
+// after a successful adoption Apply runs only what is new.
+func adoptPreparedSuite(t *testing.T, d render.Dialect, open func(t *testing.T) *sql.DB, prefix string) {
+	ctx := context.Background()
+	db := open(t)
+	history := widgetsHistory(prefix)
+	ranAt := []time.Time{
+		time.Date(2025, 3, 1, 10, 0, 0, 0, time.UTC),
+		time.Date(2025, 6, 1, 10, 0, 0, 0, time.UTC),
+		time.Date(2025, 9, 1, 10, 0, 0, 0, time.UTC),
+	}
+	oldLedger(t, db, prefix, history, ranAt)
+	ledgerTable := prefix + "_ledger"
+	l, err := migrate.NewLedger(d, ledgerTable, migrate.EngineLock(d, prefix+"_lock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	next := migrate.Migration{Owner: "acme", Name: "0003_weight", Script: ddl.Script{{SQL: "ALTER TABLE " + prefix + "_widgets ADD COLUMN weight INTEGER", Transactional: true}}}
+	all := append(slices.Clone(history), next)
+
+	// The caller's own check fails after reading: nothing is recorded, the
+	// error is the caller's, and the lock is released for the next call.
+	calls := 0
+	_, err = l.AdoptPreparedDB(ctx, db, func(ctx context.Context, conn *sql.Conn) (migrate.Ran, error) {
+		calls++
+		if _, err := readOldLedger(ctx, conn, prefix); err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("acme/0002_color: %w", errOldLedgerEdited)
+	}, all...)
+	if !errors.Is(err, errOldLedgerEdited) || calls != 1 {
+		t.Fatalf("a failing prepare: %v after %d calls, want the caller's error after one", err, calls)
+	}
+	if n := countRows(t, db, d, ledgerTable); n != 0 {
+		t.Fatalf("a failed prepare recorded %d rows", n)
+	}
+
+	// A read the database refuses is returned the same way.
+	if _, err := l.AdoptPreparedDB(ctx, db, func(ctx context.Context, conn *sql.Conn) (migrate.Ran, error) {
+		return readOldLedger(ctx, conn, prefix+"_missing")
+	}, all...); err == nil || !strings.Contains(err.Error(), "reading what ran") {
+		t.Fatalf("a refused read: %v", err)
+	}
+	if n := countRows(t, db, d, ledgerTable); n != 0 {
+		t.Fatalf("a refused read recorded %d rows", n)
+	}
+
+	adopted, err := l.AdoptPreparedDB(ctx, db, func(ctx context.Context, conn *sql.Conn) (migrate.Ran, error) {
+		return readOldLedger(ctx, conn, prefix)
+	}, all...)
+	if err != nil || strings.Join(adopted, ",") != "acme/0001_widgets,acme/0002_color,acme-plugin/0001_size" {
+		t.Fatalf("adopt prepared: %v, %v", adopted, err)
+	}
+	applied, err := l.ApplyDB(ctx, db, all...)
+	if err != nil || strings.Join(applied, ",") != "acme/0003_weight" {
+		t.Fatalf("apply after adopting must run only the new migration: %v, %v", applied, err)
+	}
+	rows, err := l.AppliedDB(ctx, db)
+	if err != nil || len(rows) != 4 {
+		t.Fatalf("applied: %v, %v", rows, err)
+	}
+	for i, m := range history {
+		r := rows[i]
+		if r.Owner != m.Owner || r.Name != m.Name || r.Checksum != migrate.Checksum(m.Script) || !r.AppliedAt.Equal(ranAt[i]) {
+			t.Errorf("adopted row %d is %+v, want %s/%s with Apply's checksum at %v", i, r, m.Owner, m.Name, ranAt[i])
+		}
+	}
+
+	// A nil prepare adopts everything, as a nil Ran does; here all is recorded.
+	if again, err := l.AdoptPreparedDB(ctx, db, nil, all...); err != nil || len(again) != 0 {
+		t.Fatalf("adopting twice: %v, %v", again, err)
+	}
+}
+
+// TestAdoptPrepared_SQLite runs the prepared adoption on a SQLite file.
+func TestAdoptPrepared_SQLite(t *testing.T) {
+	adoptPreparedSuite(t, sqlb.SQLiteDialect{}, sqliteFile, "ap")
+}
+
+// TestAdoptPrepared_Postgres runs the prepared adoption on Postgres.
+func TestAdoptPrepared_Postgres(t *testing.T) {
+	open := func(t *testing.T) *sql.DB { return openEnv(t, "pgx", "SQLB_PG_DSN") }
+	db := open(t)
+	t.Cleanup(func() { dropAdoptTables(db, "ap") })
+	dropAdoptTables(db, "ap")
+	adoptPreparedSuite(t, sqlb.PostgresDialect{}, open, "ap")
+}
+
+// TestAdoptPrepared_MySQL runs the prepared adoption on MySQL.
+func TestAdoptPrepared_MySQL(t *testing.T) {
+	open := func(t *testing.T) *sql.DB { return openEnv(t, "mysql", "SQLB_MYSQL_DSN") }
+	db := open(t)
+	t.Cleanup(func() { dropAdoptTables(db, "ap") })
+	dropAdoptTables(db, "ap")
+	adoptPreparedSuite(t, sqlb.MySQLDialect{}, open, "ap")
+}
+
+// TestAdoptPrepared_TwoProcessesReadTheirOldLedgerOnAFreshWALFile is the case
+// AdoptPrepared exists for. Two processes start on one new SQLite file opened
+// with journal_mode(WAL) in the DSN, and each, as a library moving from a
+// ledger of its own must, reads its old ledger before adopting, then applies.
+// Read on a connection of the caller's own before Adopt, that read failed with
+// "database is locked" in about one round in three, because the other process
+// was converting the file to WAL; read through AdoptPrepared's connection,
+// under the lock, it must never fail. 200 rounds, every call checked.
+func TestAdoptPrepared_TwoProcessesReadTheirOldLedgerOnAFreshWALFile(t *testing.T) {
+	ctx := context.Background()
+	d := sqlb.SQLiteDialect{}
+	history := widgetsHistory("wal")
+	// What a library checks first on a database it may have migrated before:
+	// is its old ledger there, and if so what it lists.
+	prepare := func(ctx context.Context, conn *sql.Conn) (migrate.Ran, error) {
+		var exists bool
+		if err := conn.QueryRowContext(ctx, "SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'wal_old_ledger')").Scan(&exists); err != nil {
+			return nil, err
+		}
+		if !exists {
+			return func(migrate.Migration) (time.Time, bool) { return time.Time{}, false }, nil
+		}
+		return readOldLedger(ctx, conn, "wal")
+	}
+	const rounds = 200
+	failed := 0
+	for round := range rounds {
+		path := filepath.Join(t.TempDir(), fmt.Sprintf("wal-%d.db", round))
+		var wg sync.WaitGroup
+		errs := make([]error, 2)
+		applied := make([][]string, 2)
+		for i := range 2 {
+			db := openSQLite(t, path, walPragmas)
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				l, err := migrate.NewLedger(d, "acme_migrations", migrate.EngineLock(d, "acme_migrate"))
+				if err != nil {
+					errs[i] = err
+					return
+				}
+				if _, err := l.AdoptPreparedDB(ctx, db, prepare, history...); err != nil {
+					errs[i] = fmt.Errorf("adopt: %w", err)
+					return
+				}
+				applied[i], errs[i] = l.ApplyDB(ctx, db, history...)
+			}()
+		}
+		wg.Wait()
+		for i, err := range errs {
+			if err != nil {
+				failed++
+				t.Errorf("round %d, process %d: %v", round, i, err)
+			}
+		}
+		if n := len(applied[0]) + len(applied[1]); failed == 0 && n != len(history) {
+			t.Fatalf("round %d: %v and %v applied, want each of %d once", round, applied[0], applied[1], len(history))
+		}
+	}
+	t.Logf("%d rounds, two processes each: %d failed calls", rounds, failed)
+}
